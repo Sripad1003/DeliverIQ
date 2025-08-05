@@ -15,9 +15,10 @@ import {
   type OrderStatus,
   type PaymentStatus,
   updateOrder,
-  cancelOrder, // Add this import
+  cancelOrder,
 } from "@/lib/app-data"
 import { Badge } from "@/components/ui/badge"
+import { DashboardHeader } from "@/components/layout/dashboard-header" // Import DashboardHeader
 
 export default function CustomerDashboard() {
   const router = useRouter()
@@ -41,7 +42,7 @@ export default function CustomerDashboard() {
         (order) => order.status === "pending" || order.status === "accepted" || order.status === "in-transit",
       ),
     )
-    setCompletedOrders(customerOrders.filter((order) => order.status === "completed"))
+    setCompletedOrders(customerOrders.filter((order) => order.status === "completed" || order.status === "cancelled")) // Include cancelled in completed for history
 
     setDrivers(getDrivers()) // Load all drivers to display driver info
   }
@@ -114,24 +115,14 @@ export default function CustomerDashboard() {
     }
   }
 
+  const handleLogout = () => {
+    localStorage.removeItem("customerSession")
+    router.push("/")
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Customer Dashboard</h1>
-            <Button
-              variant="outline"
-              onClick={() => {
-                localStorage.removeItem("customerSession")
-                router.push("/")
-              }}
-            >
-              Logout
-            </Button>
-          </div>
-        </div>
-      </header>
+      <DashboardHeader title="Customer Dashboard" onLogout={handleLogout} />
 
       <main className="container mx-auto px-4 py-8">
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -232,7 +223,7 @@ export default function CustomerDashboard() {
                           <CreditCard className="h-4 w-4 mr-2" /> Pay Now
                         </Button>
                       )}
-                      {order.status === "pending" && ( // Add this condition
+                      {order.status === "pending" && (
                         <Button
                           size="sm"
                           variant="destructive"
@@ -250,13 +241,15 @@ export default function CustomerDashboard() {
               )}
               {completedOrders.length > 0 && (
                 <>
-                  <h3 className="font-semibold mt-4 text-xl">Completed Orders</h3>
+                  <h3 className="font-semibold mt-4 text-xl">Completed & Cancelled Orders</h3>
                   {completedOrders.map((order) => (
                     <div key={order.id} className="flex flex-col p-4 border rounded-lg bg-gray-50">
                       <div className="flex justify-between items-center mb-2">
                         <h3 className="font-semibold text-lg">{order.items.map((item) => item.name).join(", ")}</h3>
                         <div className="flex gap-2">
-                          <Badge className={getStatusBadgeColor(order.status)}>Completed</Badge>
+                          <Badge className={getStatusBadgeColor(order.status)}>
+                            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                          </Badge>
                           <Badge className={getPaymentBadgeColor(order.paymentStatus)}>
                             {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
                           </Badge>
@@ -293,28 +286,31 @@ export default function CustomerDashboard() {
                         )}
                       </div>
                       <div className="mt-4 flex gap-2">
-                        {!order.rating && order.driverId && (
-                          <Link href={`/customer/rate-driver/${order.id}`} className="flex-1">
-                            <Button size="sm" className="w-full">
-                              Rate Driver
-                            </Button>
-                          </Link>
-                        )}
+                        {!order.rating &&
+                          order.driverId &&
+                          order.status === "completed" && ( // Only allow rating if completed and not yet rated
+                            <Link href={`/customer/rate-driver/${order.id}`} className="flex-1">
+                              <Button size="sm" className="w-full">
+                                Rate Driver
+                              </Button>
+                            </Link>
+                          )}
                         {order.rating && (
                           <Button size="sm" variant="outline" className="w-full bg-transparent flex-1" disabled>
                             Rating Submitted
                           </Button>
                         )}
-                        {order.paymentStatus === "pending" && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="flex-1"
-                            onClick={() => handlePayNow(order.id)}
-                          >
-                            <CreditCard className="h-4 w-4 mr-2" /> Pay Now
-                          </Button>
-                        )}
+                        {order.paymentStatus === "pending" &&
+                          order.status !== "cancelled" && ( // Don't show pay now for cancelled orders
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="flex-1"
+                              onClick={() => handlePayNow(order.id)}
+                            >
+                              <CreditCard className="h-4 w-4 mr-2" /> Pay Now
+                            </Button>
+                          )}
                       </div>
                     </div>
                   ))}

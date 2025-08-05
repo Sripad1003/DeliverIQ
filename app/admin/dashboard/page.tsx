@@ -7,7 +7,8 @@ import { Users, Truck, Package, TrendingUp, AlertCircle, CheckCircle, Shield, Ke
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
+import { DashboardHeader } from "@/components/layout/dashboard-header" // Import DashboardHeader
 import { getCustomers, getDrivers, getOrders, OrderStatus } from "@/lib/app-data"
 
 // Helper for comparing arrays of objects by their stringified content
@@ -105,34 +106,23 @@ export default function AdminDashboard() {
     }
   }, [searchParams, router]) // Removed recentRegistrations from dependencies
 
+  const handleLogout = () => {
+    localStorage.removeItem("adminSession")
+    window.location.href = "/"
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-            <Button
-              variant="outline"
-              onClick={() => {
-                localStorage.removeItem("adminSession")
-                window.location.href = "/"
-              }}
-            >
-              Logout
-            </Button>
-          </div>
-        </div>
-      </header>
+      <DashboardHeader title="Admin Dashboard" onLogout={handleLogout} />
 
       <main className="container mx-auto px-4 py-8">
-        {showAccessDenied && (
-          <Alert className="mb-6 border-red-200 bg-red-50">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">
-              <strong>Access Denied:</strong> Only the Super Admin can access the Security Setup page.
-            </AlertDescription>
-          </Alert>
-        )}
+        <StatusAlert
+          message={
+            showAccessDenied
+              ? { type: "error", text: "Access Denied: Only the Super Admin can access the Security Setup page." }
+              : { type: "", text: "" }
+          }
+        />
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>

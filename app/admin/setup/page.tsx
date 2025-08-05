@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Shield, Key, Copy, RefreshCw, AlertTriangle, CheckCircle } from "lucide-react"
+import { Shield, Key, Copy, RefreshCw } from "lucide-react"
+import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
+import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
 import { initializeAdminData, getSecurityKeyPlain, setSecurityKey } from "@/lib/admin-data"
 import { generateSecureKey } from "@/lib/security" // Add this import
 
@@ -59,28 +60,15 @@ export default function AdminSetupPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="container mx-auto max-w-4xl">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <Shield className="h-8 w-8 text-red-600" />
-            <h1 className="text-3xl font-bold text-gray-900">Admin Security Setup</h1>
-          </div>
-          <p className="text-gray-600">Manage admin security keys and access credentials</p>
-        </div>
+        <PageHeaderWithBack
+          title="Admin Security Setup"
+          description="Manage admin security keys and access credentials"
+          backLink="/admin/dashboard"
+          icon={Shield}
+          iconColorClass="text-red-600"
+        />
 
-        {message.text && (
-          <Alert
-            className={`mb-6 ${message.type === "error" ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}`}
-          >
-            {message.type === "error" ? (
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-            ) : (
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            )}
-            <AlertDescription className={message.type === "error" ? "text-red-800" : "text-green-800"}>
-              {message.text}
-            </AlertDescription>
-          </Alert>
-        )}
+        <StatusAlert message={message} />
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* Current Security Key */}
@@ -99,12 +87,13 @@ export default function AdminSetupPage() {
                 Copy Current Key
               </Button>
 
-              <Alert className="border-yellow-200 bg-yellow-50">
-                <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                <AlertDescription className="text-yellow-800">
-                  <strong>Important:</strong> Keep this key secure and only share with authorized administrators.
-                </AlertDescription>
-              </Alert>
+              <StatusAlert
+                message={{
+                  type: "warning",
+                  text: "Important: Keep this key secure and only share with authorized administrators.",
+                }}
+                className="border-yellow-200 bg-yellow-50 text-yellow-800"
+              />
             </CardContent>
           </Card>
 

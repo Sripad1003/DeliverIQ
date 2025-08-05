@@ -1,26 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  PlusCircle,
-  MinusCircle,
-  Package,
-  MapPin,
-  Truck,
-  DollarSign,
-  CheckCircle,
-  AlertTriangle,
-  ArrowLeft,
-  CreditCard,
-} from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { PlusCircle, MinusCircle, Package, MapPin, Truck, DollarSign, CreditCard } from "lucide-react"
+import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
+import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
 import { getCustomerSession, createOrder, type Item, type Order } from "@/lib/app-data"
 import { suggestVehicles, calculateDistance, type VehicleType } from "@/lib/vehicle-logic"
 
@@ -168,32 +157,14 @@ export default function BookTransportPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col items-center p-4">
       <div className="w-full max-w-3xl">
-        <div className="text-center mb-8">
-          <Link href="/customer/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center justify-center gap-2">
-            <Truck className="h-8 w-8 text-blue-600" />
-            Book New Transport
-          </h1>
-          <p className="text-gray-600">Tell us about your goods and where they need to go.</p>
-        </div>
+        <PageHeaderWithBack
+          title="Book New Transport"
+          description="Tell us about your goods and where they need to go."
+          backLink="/customer/dashboard"
+          icon={Truck}
+        />
 
-        {message.text && (
-          <Alert
-            className={`mb-6 ${message.type === "error" ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}`}
-          >
-            {message.type === "error" ? (
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-            ) : (
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            )}
-            <AlertDescription className={message.type === "error" ? "text-red-800" : "text-green-800"}>
-              {message.text}
-            </AlertDescription>
-          </Alert>
-        )}
+        <StatusAlert message={message} />
 
         {!bookingConfirmed ? (
           <>

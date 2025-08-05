@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Car, Star, DollarSign, Clock, MapPin, Package, Calendar } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import { DashboardHeader } from "@/components/layout/dashboard-header" // Import DashboardHeader
 import { getDriverSession, getOrders, updateOrder, type Order, OrderStatus } from "@/lib/app-data"
 
 export default function DriverDashboard() {
@@ -105,24 +106,14 @@ export default function DriverDashboard() {
     }
   }
 
+  const handleLogout = () => {
+    localStorage.removeItem("driverSession")
+    router.push("/")
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Driver Dashboard</h1>
-            <Button
-              variant="outline"
-              onClick={() => {
-                localStorage.removeItem("driverSession")
-                router.push("/")
-              }}
-            >
-              Logout
-            </Button>
-          </div>
-        </div>
-      </header>
+      <DashboardHeader title="Driver Dashboard" onLogout={handleLogout} />
 
       <main className="container mx-auto px-4 py-8">
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

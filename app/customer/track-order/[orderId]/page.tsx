@@ -6,19 +6,8 @@ import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-  ArrowLeft,
-  MapPin,
-  Truck,
-  Package,
-  User,
-  Calendar,
-  DollarSign,
-  Clock,
-  CircleDot,
-  CircleCheck,
-  Star,
-} from "lucide-react"
+import { MapPin, Truck, Package, User, Calendar, DollarSign, Clock, CircleDot, CircleCheck, Star } from "lucide-react"
+import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
 import { getOrderById, getDrivers, getCurrentUserSession, type Order, type Driver, OrderStatus } from "@/lib/app-data"
 
 export default function TrackOrderPage() {
@@ -79,7 +68,7 @@ export default function TrackOrderPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <p className="text-red-600 text-lg mb-4">{error}</p>
-        <Link href="/customer/dashboard">
+        <Link href={dashboardLink}>
           <Button>Go to Dashboard</Button>
         </Link>
       </div>
@@ -90,7 +79,7 @@ export default function TrackOrderPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <p className="text-gray-600 text-lg mb-4">Order details could not be loaded.</p>
-        <Link href="/customer/dashboard">
+        <Link href={dashboardLink}>
           <Button>Go to Dashboard</Button>
         </Link>
       </div>
@@ -136,17 +125,12 @@ export default function TrackOrderPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col items-center p-4">
       <div className="w-full max-w-3xl">
-        <div className="text-center mb-8">
-          <Link href={dashboardLink} className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center justify-center gap-2">
-            <Truck className="h-8 w-8 text-blue-600" />
-            Track Your Order
-          </h1>
-          <p className="text-gray-600">Order ID: {order.id}</p>
-        </div>
+        <PageHeaderWithBack
+          title="Track Your Order"
+          description={`Order ID: ${order.id}`}
+          backLink={dashboardLink}
+          icon={Truck}
+        />
 
         <Card className="mb-6">
           <CardHeader>

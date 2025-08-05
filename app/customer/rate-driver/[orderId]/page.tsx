@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Star, ArrowLeft, CheckCircle, AlertTriangle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Star } from "lucide-react"
+import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
+import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
 import { getOrderById, updateOrder, updateDriverRating, getCustomerSession, type Order } from "@/lib/app-data"
 
 export default function RateDriverPage() {
@@ -79,12 +80,7 @@ export default function RateDriverPage() {
   if (!order) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        {message.text && (
-          <Alert className={`mb-4 ${message.type === "error" ? "border-red-200 bg-red-50" : ""}`}>
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">{message.text}</AlertDescription>
-          </Alert>
-        )}
+        <StatusAlert message={message} />
         <p className="text-gray-600 text-lg mb-4">Could not load order for rating.</p>
         <Link href="/customer/dashboard">
           <Button>Go to Dashboard</Button>
@@ -96,32 +92,15 @@ export default function RateDriverPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col items-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link href="/customer/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center justify-center gap-2">
-            <Star className="h-8 w-8 text-yellow-500" />
-            Rate Your Trip
-          </h1>
-          <p className="text-gray-600">Order ID: {order.id}</p>
-        </div>
+        <PageHeaderWithBack
+          title="Rate Your Trip"
+          description={`Order ID: ${order.id}`}
+          backLink="/customer/dashboard"
+          icon={Star}
+          iconColorClass="text-yellow-500"
+        />
 
-        {message.text && (
-          <Alert
-            className={`mb-6 ${message.type === "error" ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}`}
-          >
-            {message.type === "error" ? (
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-            ) : (
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            )}
-            <AlertDescription className={message.type === "error" ? "text-red-800" : "text-green-800"}>
-              {message.text}
-            </AlertDescription>
-          </Alert>
-        )}
+        <StatusAlert message={message} />
 
         <Card>
           <CardHeader>

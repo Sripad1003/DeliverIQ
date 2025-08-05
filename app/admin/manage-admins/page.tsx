@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   Dialog,
   DialogContent,
@@ -16,8 +15,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Shield, UserPlus, Trash2, AlertTriangle, CheckCircle, ArrowLeft } from "lucide-react"
-import Link from "next/link"
+import { Shield, UserPlus, Trash2 } from "lucide-react"
+import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
+import { DashboardHeader } from "@/components/layout/dashboard-header" // Import DashboardHeader
 import { initializeAdminData, getAdminData, setAdminData, createAdmin } from "@/lib/admin-data"
 
 export default function ManageAdminsPage() {
@@ -118,56 +118,25 @@ export default function ManageAdminsPage() {
     setMessage({ type: "success", text: "Admin account deleted successfully" })
   }
 
+  const handleLogout = () => {
+    localStorage.removeItem("adminSession")
+    router.push("/")
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <Link href="/admin/dashboard" className="text-gray-600 hover:text-gray-900">
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <Shield className="h-6 w-6 text-red-600" />
-                Admin Management
-              </h1>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => {
-                localStorage.removeItem("adminSession")
-                router.push("/")
-              }}
-            >
-              Logout
-            </Button>
-          </div>
-        </div>
-      </header>
+      <DashboardHeader title="Admin Management" onLogout={handleLogout} homeLink="/admin/dashboard" />
 
       <main className="container mx-auto px-4 py-8">
-        <Alert className="mb-6 border-red-200 bg-red-50">
-          <Shield className="h-4 w-4 text-red-600" />
-          <AlertDescription className="text-red-800">
-            <strong>Security Notice:</strong> Only create admin accounts for trusted personnel. All admin activities are
-            logged and monitored.
-          </AlertDescription>
-        </Alert>
+        <StatusAlert
+          message={{
+            type: "warning",
+            text: "Security Notice: Only create admin accounts for trusted personnel. All admin activities are logged and monitored.",
+          }}
+          className="mb-6 border-red-200 bg-red-50 text-red-800"
+        />
 
-        {message.text && (
-          <Alert
-            className={`mb-6 ${message.type === "error" ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}`}
-          >
-            {message.type === "error" ? (
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-            ) : (
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            )}
-            <AlertDescription className={message.type === "error" ? "text-red-800" : "text-green-800"}>
-              {message.text}
-            </AlertDescription>
-          </Alert>
-        )}
+        <StatusAlert message={message} />
 
         <Card>
           <CardHeader>
