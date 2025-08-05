@@ -38,15 +38,3 @@ export const generateSecureKey = (): string => {
 
   return result
 }
-
-// This is a placeholder for a real security key.
-// In a production environment, this should be stored securely (e.g., in environment variables)
-// and not hardcoded or exposed client-side.
-export const DELIVERIQ_ADMIN_SECURITY_KEY = "DELIVERIQ_ADMIN_2024"
-
-// In a real application, you would have more sophisticated security measures:
-// - Hashing passwords
-// - JWTs or session management for authentication
-// - Role-based access control (RBAC)
-// - Input validation and sanitization
-// - Protection against common web vulnerabilities (XSS, CSRF, SQL injection, etc.)

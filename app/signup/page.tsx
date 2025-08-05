@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -13,7 +14,7 @@ import { Truck, User, Car, Shield } from "lucide-react"
 import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
 import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
 import { AuthCard } from "@/components/auth/auth-card" // Import AuthCard
-import { initializeAppData, registerUser } from "@/lib/app-data"
+import { initializeAppData, createCustomer, createDriver, loginCustomer, loginDriver } from "@/lib/app-data"
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -64,25 +65,44 @@ export default function SignupPage() {
     setIsLoading(true)
 
     try {
-      const newUser = await registerUser({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        phone: formData.phone,
-        role: formData.role,
-        vehicleType: formData.vehicleType as "bike" | "auto" | "car" | "van" | "truck",
-        vehicleNumber: formData.vehicleNumber,
-        licenseNumber: formData.licenseNumber,
-        address: formData.address,
-      })
-
       if (formData.role === "customer") {
+        const newCustomer = await createCustomer({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+          address: formData.address,
+        })
+        loginCustomer({
+          id: newCustomer.id,
+          email: newCustomer.email,
+          name: newCustomer.name,
+          loginTime: new Date().toISOString(),
+        })
+        setMessage({ type: "success", text: "Customer account created successfully!" })
         router.push("/customer/dashboard")
       } else if (formData.role === "driver") {
+        const newDriver = await createDriver({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+          vehicleType: formData.vehicleType as "bike" | "auto" | "car" | "van" | "truck",
+          vehicleNumber: formData.vehicleNumber,
+          licenseNumber: formData.licenseNumber,
+        })
+        loginDriver({
+          id: newDriver.id,
+          email: newDriver.email,
+          name: newDriver.name,
+          vehicleType: newDriver.vehicleType,
+          loginTime: new Date().toISOString(),
+        })
+        setMessage({ type: "success", text: "Driver account created successfully!" })
         router.push("/driver/dashboard")
+      } else {
+        setMessage({ type: "error", text: "Please select a role." })
       }
-
-      setMessage({ type: "success", text: "Account created successfully!" })
     } catch (error) {
       console.error("Signup error:", error)
       setMessage({ type: "error", text: "Failed to create account. Please try again." })
@@ -118,14 +138,14 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-gray-100 px-4 dark:bg-gray-950">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <PageHeaderWithBack title="DeliverIQ" backLink="/" icon={Truck} />
 
         <StatusAlert message={message} />
 
         <AuthCard
-          title="Sign Up for DeliverIQ"
+          title="Create Account"
           description={
             formData.role ? (
               <span className={getRoleColor()}>
@@ -137,14 +157,6 @@ export default function SignupPage() {
           }
           icon={getRoleIcon()}
           iconColorClass={getRoleColor()}
-          footer={
-            <div className="mt-4 text-center text-sm">
-              Already have an account?{" "}
-              <Link href="/login" className="text-blue-600 hover:underline">
-                Login
-              </Link>
-            </div>
-          }
         >
           <form onSubmit={handleSignup} className="space-y-4">
             {/* Role Selection */}
@@ -277,9 +289,15 @@ export default function SignupPage() {
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Creating Account..." : "Sign Up"}
+              {isLoading ? "Creating Account..." : "Create Account"}
             </Button>
           </form>
+          <div className="mt-4 text-center text-sm">
+            Already have an account?{" "}
+            <Link href="/login" className="text-blue-600 hover:underline">
+              Sign in
+            </Link>
+          </div>
         </AuthCard>
       </div>
     </div>

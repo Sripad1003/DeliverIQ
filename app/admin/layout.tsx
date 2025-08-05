@@ -1,25 +1,42 @@
-import type React from "react"
-import { DashboardHeader } from "@/components/layout/dashboard-header"
-import { getAdminDashboardData } from "@/lib/admin-data"
+"use client"
 
-export default async function AdminLayout({
+import type React from "react"
+
+import { useEffect } from "react"
+import { useRouter, usePathname } from "next/navigation"
+
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { adminName } = await getAdminDashboardData()
-  return (
-    <div className="flex min-h-screen w-full flex-col">
-      <DashboardHeader
-        userType="admin"
-        userName={adminName}
-        navItems={[
-          { href: "/admin/dashboard", label: "Dashboard" },
-          { href: "/admin/manage-admins", label: "Manage Admins" },
-          { href: "/admin/setup", label: "Setup" },
-        ]}
-      />
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">{children}</main>
-    </div>
-  )
+  const router = useRouter()
+  const pathname = usePathname()
+
+  useEffect(() => {
+    // Skip auth check for login page
+    if (pathname === "/admin/login") {
+      return
+    }
+
+    // Check if user is authenticated admin
+    const adminSessionString = localStorage.getItem("adminSession")
+    if (!adminSessionString) {
+      router.push("/admin/login")
+      return
+    }
+
+    try {
+      const adminSession = JSON.parse(adminSessionString)
+      // If trying to access /admin/setup and not the Super Admin (ID "1")
+      if (pathname === "/admin/setup" && adminSession.id !== "1") {
+        router.push("/admin/dashboard?accessDenied=true") // Redirect to dashboard with an error
+      }
+    } catch (error) {
+      console.error("Failed to parse admin session:", error)
+      router.push("/admin/login") // Redirect to login if session is invalid
+    }
+  }, [router, pathname])
+
+  return <>{children}</>
 }

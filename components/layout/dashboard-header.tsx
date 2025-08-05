@@ -1,94 +1,36 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { logoutAdmin } from "@/lib/admin-data"
-import { logoutUser } from "@/lib/app-data"
-import { logoutDriver } from "@/lib/vehicle-logic"
-import { CircleUserIcon, MenuIcon, Package2Icon } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Truck } from "lucide-react"
 
 interface DashboardHeaderProps {
-  userType: "customer" | "driver" | "admin"
-  userName: string
-  navItems: { href: string; label: string }[]
+  title: string
+  onLogout: () => void
+  homeLink?: string
 }
 
-export function DashboardHeader({ userType, userName, navItems }: DashboardHeaderProps) {
-  const handleLogout = async () => {
-    if (userType === "customer") {
-      await logoutUser()
-    } else if (userType === "driver") {
-      await logoutDriver()
-    } else if (userType === "admin") {
-      await logoutAdmin()
-    }
-  }
+export function DashboardHeader({ title, onLogout, homeLink = "/" }: DashboardHeaderProps) {
+  const router = useRouter()
 
   return (
-    <header className="sticky top-0 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
-      <nav className="hidden flex-col gap-6 text-lg font-medium md:flex md:flex-row md:items-center md:gap-5 md:text-sm lg:gap-6">
-        <Link className="flex items-center gap-2 text-lg font-semibold md:text-base" href="#">
-          <Package2Icon className="h-6 w-6" />
-          <span className="sr-only">DeliverIQ</span>
-        </Link>
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            className="text-muted-foreground transition-colors hover:text-foreground"
-            href={item.href}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button className="shrink-0 md:hidden bg-transparent" size="icon" variant="outline">
-            <MenuIcon className="h-5 w-5" />
-            <span className="sr-only">Toggle navigation menu</span>
+    <header className="bg-white border-b">
+      <div className="container mx-auto px-4 py-4">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            {homeLink &&
+              homeLink !== "/" && ( // Only show back arrow if not home
+                <Link href={homeLink} className="text-gray-600 hover:text-gray-900">
+                  <Truck className="h-6 w-6 text-blue-600" />
+                </Link>
+              )}
+            <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+          </div>
+          <Button variant="outline" onClick={onLogout}>
+            Logout
           </Button>
-        </SheetTrigger>
-        <SheetContent side="left">
-          <nav className="grid gap-6 text-lg font-medium">
-            <Link className="flex items-center gap-2 text-lg font-semibold" href="#">
-              <Package2Icon className="h-6 w-6" />
-              <span className="sr-only">DeliverIQ</span>
-            </Link>
-            {navItems.map((item) => (
-              <Link key={item.href} className="hover:text-foreground" href={item.href}>
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </SheetContent>
-      </Sheet>
-      <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-        <div className="ml-auto flex-1 sm:flex-initial">{/* Search or other elements can go here */}</div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button className="rounded-full" size="icon" variant="secondary">
-              <CircleUserIcon className="h-5 w-5" />
-              <span className="sr-only">Toggle user menu</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{userName}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuItem>Support</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        </div>
       </div>
     </header>
   )

@@ -1,7 +1,4 @@
-"use server"
-
 import type { Item } from "./app-data"
-import { redirect } from "next/navigation"
 
 // Define vehicle capacities (max weight in kg, max volume in cubic meters)
 export const VEHICLE_CAPACITIES = {
@@ -74,10 +71,4 @@ export const calculateDistance = (pickup: string, delivery: string): number => {
     return 50 + Math.floor(Math.random() * 100) // Random distance between 50 and 150 km
   }
   return 0 // Same location or invalid input
-}
-
-export async function logoutDriver() {
-  // In a real application, this would clear session cookies or tokens
-  console.log("Driver logged out")
-  redirect("/login")
 }

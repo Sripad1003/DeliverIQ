@@ -12,7 +12,6 @@ import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
 import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
 import { getCustomerSession, createOrder, type Item, type Order } from "@/lib/app-data"
 import { suggestVehicles, calculateDistance, type VehicleType } from "@/lib/vehicle-logic"
-import { Textarea } from "@/components/ui/textarea"
 
 export default function BookTransportPage() {
   const router = useRouter()
@@ -30,7 +29,6 @@ export default function BookTransportPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState({ type: "", text: "" })
   const [bookingConfirmed, setBookingConfirmed] = useState(false) // New state for booking confirmation
-  const [itemDescription, setItemDescription] = useState("") // New state for item description
 
   useEffect(() => {
     const session = getCustomerSession()
@@ -322,28 +320,6 @@ export default function BookTransportPage() {
                   <PlusCircle className="h-4 w-4 mr-2" />
                   Add Another Item
                 </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5 text-blue-600" />
-                  Item Description
-                </CardTitle>
-                <CardDescription>Provide a brief description of your items.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="itemDescription">Item Description</Label>
-                  <Textarea
-                    id="itemDescription"
-                    placeholder="e.g., 2 boxes of documents, a small parcel"
-                    value={itemDescription}
-                    onChange={(e) => setItemDescription(e.target.value)}
-                    required
-                  />
-                </div>
               </CardContent>
             </Card>
 

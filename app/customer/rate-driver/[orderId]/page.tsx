@@ -1,75 +1,144 @@
-import { PageHeaderWithBack } from "@/components/layout/page-header-with-back"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Textarea } from "@/components/ui/textarea"
-import { getOrderDetails, submitDriverRating } from "@/lib/app-data"
+"use client"
 
-export default async function RateDriverPage({
-  params,
-}: {
-  params: { orderId: string }
-}) {
-  const order = await getOrderDetails(params.orderId)
+import { useEffect, useState } from "react"
+import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Star } from "lucide-react"
+import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
+import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
+import { getOrderById, updateOrder, updateDriverRating, getCustomerSession, type Order } from "@/lib/app-data"
+
+export default function RateDriverPage() {
+  const router = useRouter()
+  const params = useParams()
+  const orderId = params.orderId as string
+  const [order, setOrder] = useState<Order | null>(null)
+  const [rating, setRating] = useState(0)
+  const [hoverRating, setHoverRating] = useState(0)
+  const [comment, setComment] = useState("")
+  const [message, setMessage] = useState({ type: "", text: "" })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const session = getCustomerSession()
+    if (!session) {
+      router.push("/login")
+      return
+    }
+
+    const fetchedOrder = getOrderById(orderId)
+    if (fetchedOrder && fetchedOrder.customerId === session.id && fetchedOrder.status === "completed") {
+      setOrder(fetchedOrder)
+      if (fetchedOrder.rating) {
+        setRating(fetchedOrder.rating)
+      }
+    } else {
+      setMessage({ type: "error", text: "Order not found, not completed, or you do not have permission to rate it." })
+    }
+    setLoading(false)
+  }, [orderId, router])
+
+  const handleRatingSubmit = () => {
+    setMessage({ type: "", text: "" })
+    if (!order || !order.driverId) {
+      setMessage({ type: "error", text: "Cannot rate this order. Driver information is missing." })
+      return
+    }
+    if (rating === 0) {
+      setMessage({ type: "error", text: "Please select a star rating." })
+      return
+    }
+
+    try {
+      // Update order with rating
+      const updatedOrder = { ...order, rating: rating }
+      updateOrder(updatedOrder)
+
+      // Update driver's average rating
+      updateDriverRating(order.driverId, rating)
+
+      setMessage({ type: "success", text: "Thank you for your feedback! Rating submitted successfully." })
+      setTimeout(() => router.push("/customer/dashboard"), 2000)
+    } catch (error) {
+      console.error("Failed to submit rating:", error)
+      setMessage({ type: "error", text: "Failed to submit rating. Please try again." })
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading rating page...</p>
+      </div>
+    )
+  }
 
   if (!order) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[80vh] text-center">
-        <h1 className="text-2xl font-bold">Order Not Found</h1>
-        <p className="text-muted-foreground">The order you are looking for does not exist.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <StatusAlert message={message} />
+        <p className="text-gray-600 text-lg mb-4">Could not load order for rating.</p>
+        <Link href="/customer/dashboard">
+          <Button>Go to Dashboard</Button>
+        </Link>
       </div>
     )
   }
 
   return (
-    <>
-      <PageHeaderWithBack
-        title="Rate Your Driver"
-        description={`Provide feedback for your recent trip (Order #${order.id}).`}
-        backHref={`/customer/track-order/${order.id}`}
-      />
-      <Card>
-        <CardHeader>
-          <CardTitle>How was your experience with {order.driverName}?</CardTitle>
-          <CardDescription>Your feedback helps us improve our service.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-4" action={submitDriverRating}>
-            <input type="hidden" name="orderId" value={order.id} />
-            <div className="grid gap-2">
-              <Label className="text-base">Rating</Label>
-              <RadioGroup defaultValue="5" className="flex items-center gap-4" name="rating">
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem id="rating-1" value="1" />
-                  <Label htmlFor="rating-1">1 Star</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem id="rating-2" value="2" />
-                  <Label htmlFor="rating-2">2 Stars</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem id="rating-3" value="3" />
-                  <Label htmlFor="rating-3">3 Stars</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem id="rating-4" value="4" />
-                  <Label htmlFor="rating-4">4 Stars</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem id="rating-5" value="5" />
-                  <Label htmlFor="rating-5">5 Stars</Label>
-                </div>
-              </RadioGroup>
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col items-center p-4">
+      <div className="w-full max-w-md">
+        <PageHeaderWithBack
+          title="Rate Your Trip"
+          description={`Order ID: ${order.id}`}
+          backLink="/customer/dashboard"
+          icon={Star}
+          iconColorClass="text-yellow-500"
+        />
+
+        <StatusAlert message={message} />
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-center">How was your experience?</CardTitle>
+            <CardDescription className="text-center">
+              Please rate your driver for the delivery from {order.pickupLocation} to {order.deliveryLocation}.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex justify-center gap-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                  key={star}
+                  className={`h-10 w-10 cursor-pointer transition-colors ${
+                    (hoverRating || rating) >= star ? "text-yellow-500 fill-yellow-500" : "text-gray-300"
+                  }`}
+                  onClick={() => setRating(star)}
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(0)}
+                />
+              ))}
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="comments">Comments (Optional)</Label>
-              <Textarea id="comments" name="comments" placeholder="Share your thoughts on the trip..." rows={4} />
+            <div className="space-y-2">
+              <Label htmlFor="comment">Additional Comments (Optional)</Label>
+              <Textarea
+                id="comment"
+                placeholder="Share your feedback..."
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                rows={4}
+              />
             </div>
-            <Button type="submit">Submit Rating</Button>
-          </form>
-        </CardContent>
-      </Card>
-    </>
+            <Button onClick={handleRatingSubmit} className="w-full">
+              Submit Rating
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }
