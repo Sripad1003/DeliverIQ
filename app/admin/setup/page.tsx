@@ -10,6 +10,8 @@ import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
 import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
 import { initializeAdminData, getSecurityKeyPlain, setSecurityKey } from "@/lib/admin-data"
 import { generateSecureKey } from "@/lib/security" // Add this import
+import { updateAdminSecurityKey } from "@/lib/admin-data"
+import { DELIVERIQ_ADMIN_SECURITY_KEY } from "@/lib/security"
 
 export default function AdminSetupPage() {
   const [currentKey, setCurrentKey] = useState("DELIVERIQ_ADMIN_2024")
@@ -152,63 +154,86 @@ export default function AdminSetupPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Security Guidelines */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Security Guidelines</CardTitle>
+              <CardDescription>Best practices for admin security key management</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-semibold text-green-700 mb-2">✅ Do:</h4>
+                  <ul className="space-y-1 text-sm text-gray-600">
+                    <li>• Store the key in a secure password manager</li>
+                    <li>• Share only with verified administrators</li>
+                    <li>• Change the key regularly (monthly/quarterly)</li>
+                    <li>• Use secure communication channels to share</li>
+                    <li>• Keep a backup of the key in a secure location</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-red-700 mb-2">❌ Don't:</h4>
+                  <ul className="space-y-1 text-sm text-gray-600">
+                    <li>• Share the key via email or chat</li>
+                    <li>• Store the key in plain text files</li>
+                    <li>• Use the same key for extended periods</li>
+                    <li>• Share with unauthorized personnel</li>
+                    <li>• Write the key on physical notes</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Admin Credentials Reference */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Admin Login Credentials</CardTitle>
+              <CardDescription>Complete credentials needed for admin access</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-semibold mb-2">Admin Email</h4>
+                  <p className="font-mono text-sm bg-gray-100 p-2 rounded">admin@deliveriq.com</p>
+                </div>
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-semibold mb-2">Password</h4>
+                  <p className="text-sm text-gray-600">Set by individual admin</p>
+                </div>
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-semibold mb-2">Security Key</h4>
+                  <p className="text-sm text-gray-600">Current key shown above</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Updated Security Key Form */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Security Key</CardTitle>
+              <CardDescription>Update the security key required for admin login.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="current-key">Current Security Key</Label>
+                  <Input id="current-key" type="password" placeholder={DELIVERIQ_ADMIN_SECURITY_KEY} disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-key">New Security Key</Label>
+                  <Input id="new-key" name="newKey" type="password" placeholder="Enter new key" required />
+                </div>
+                <Button type="submit" formAction={updateAdminSecurityKey}>
+                  Update Key
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         </div>
-
-        {/* Security Guidelines */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Security Guidelines</CardTitle>
-            <CardDescription>Best practices for admin security key management</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-semibold text-green-700 mb-2">✅ Do:</h4>
-                <ul className="space-y-1 text-sm text-gray-600">
-                  <li>• Store the key in a secure password manager</li>
-                  <li>• Share only with verified administrators</li>
-                  <li>• Change the key regularly (monthly/quarterly)</li>
-                  <li>• Use secure communication channels to share</li>
-                  <li>• Keep a backup of the key in a secure location</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold text-red-700 mb-2">❌ Don't:</h4>
-                <ul className="space-y-1 text-sm text-gray-600">
-                  <li>• Share the key via email or chat</li>
-                  <li>• Store the key in plain text files</li>
-                  <li>• Use the same key for extended periods</li>
-                  <li>• Share with unauthorized personnel</li>
-                  <li>• Write the key on physical notes</li>
-                </ul>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Admin Credentials Reference */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Admin Login Credentials</CardTitle>
-            <CardDescription>Complete credentials needed for admin access</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="p-4 border rounded-lg">
-                <h4 className="font-semibold mb-2">Admin Email</h4>
-                <p className="font-mono text-sm bg-gray-100 p-2 rounded">admin@deliveriq.com</p>
-              </div>
-              <div className="p-4 border rounded-lg">
-                <h4 className="font-semibold mb-2">Password</h4>
-                <p className="text-sm text-gray-600">Set by individual admin</p>
-              </div>
-              <div className="p-4 border rounded-lg">
-                <h4 className="font-semibold mb-2">Security Key</h4>
-                <p className="text-sm text-gray-600">Current key shown above</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )

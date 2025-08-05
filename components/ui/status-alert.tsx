@@ -1,27 +1,54 @@
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertTriangle, CheckCircle } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { OrderStatus } from "@/lib/app-data"
+import { cn } from "@/lib/utils"
+import { CheckCircleIcon, ClockIcon, XCircleIcon, TruckIcon } from "lucide-react"
+import type React from "react"
 
 interface StatusAlertProps {
-  message: { type: string; text: string }
-  className?: string
+  status: OrderStatus
 }
 
-export function StatusAlert({ message, className }: StatusAlertProps) {
-  if (!message.text) return null
+export function StatusAlert({ status }: StatusAlertProps) {
+  let icon: React.ReactNode
+  let variant: "default" | "secondary" | "destructive" | "outline"
+  let label: string
 
-  const isError = message.type === "error"
-  const alertClass = isError ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"
-  const iconClass = isError ? "text-red-600" : "text-green-600"
-  const descriptionClass = isError ? "text-red-800" : "text-green-800"
+  switch (status) {
+    case OrderStatus.Pending:
+      icon = <ClockIcon className="h-4 w-4" />
+      variant = "secondary"
+      label = "Pending"
+      break
+    case OrderStatus.Assigned:
+      icon = <TruckIcon className="h-4 w-4" />
+      variant = "default"
+      label = "Assigned"
+      break
+    case OrderStatus.InProgress:
+      icon = <TruckIcon className="h-4 w-4" />
+      variant = "default"
+      label = "In Progress"
+      break
+    case OrderStatus.Completed:
+      icon = <CheckCircleIcon className="h-4 w-4" />
+      variant = "default"
+      label = "Completed"
+      break
+    case OrderStatus.Cancelled:
+      icon = <XCircleIcon className="h-4 w-4" />
+      variant = "destructive"
+      label = "Cancelled"
+      break
+    default:
+      icon = null
+      variant = "outline"
+      label = "Unknown"
+  }
 
   return (
-    <Alert className={`mb-6 ${alertClass} ${className}`}>
-      {isError ? (
-        <AlertTriangle className={`h-4 w-4 ${iconClass}`} />
-      ) : (
-        <CheckCircle className={`h-4 w-4 ${iconClass}`} />
-      )}
-      <AlertDescription className={descriptionClass}>{message.text}</AlertDescription>
-    </Alert>
+    <Badge className={cn("flex items-center gap-1 px-2 py-1 text-xs font-medium")} variant={variant}>
+      {icon}
+      {label}
+    </Badge>
   )
 }
