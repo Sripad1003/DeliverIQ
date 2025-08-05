@@ -8,12 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Truck } from "lucide-react"
 import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
-import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
 import { AuthCard } from "@/components/auth/auth-card" // Import AuthCard
-import { initializeAppData, getCustomers, getDrivers, loginCustomer, loginDriver } from "@/lib/app-data"
-import { verifyPassword } from "@/lib/security"
+import { initializeAppData, loginUser } from "@/lib/app-data"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -33,39 +30,16 @@ export default function LoginPage() {
     setMessage({ type: "", text: "" }) // Clear previous messages
 
     try {
-      if (role === "customer") {
-        const customers = getCustomers()
-        const customer = customers.find((c) => c.email === email)
+      const user = await loginUser(email, password, role)
 
-        if (customer && (await verifyPassword(password, customer.passwordHash))) {
-          loginCustomer({
-            id: customer.id,
-            email: customer.email,
-            name: customer.name,
-            loginTime: new Date().toISOString(),
-          })
+      if (user) {
+        if (user.role === "customer") {
           router.push("/customer/dashboard")
-        } else {
-          setMessage({ type: "error", text: "Invalid customer credentials." })
-        }
-      } else if (role === "driver") {
-        const drivers = getDrivers()
-        const driver = drivers.find((d) => d.email === email)
-
-        if (driver && (await verifyPassword(password, driver.passwordHash))) {
-          loginDriver({
-            id: driver.id,
-            email: driver.email,
-            name: driver.name,
-            vehicleType: driver.vehicleType,
-            loginTime: new Date().toISOString(),
-          })
+        } else if (user.role === "driver") {
           router.push("/driver/dashboard")
-        } else {
-          setMessage({ type: "error", text: "Invalid driver credentials." })
         }
       } else {
-        setMessage({ type: "error", text: "Please select a role." })
+        setMessage({ type: "error", text: "Invalid credentials." })
       }
     } catch (err) {
       console.error("Login error:", err)
@@ -76,59 +50,60 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <PageHeaderWithBack title="DeliverIQ" backLink="/" icon={Truck} />
-
-        <AuthCard title="Welcome Back" description="Sign in to your account to continue">
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Login as</Label>
-              <Select value={role} onValueChange={setRole} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="customer">Customer</SelectItem>
-                  <SelectItem value="driver">Driver</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign In"}
-            </Button>
-            <StatusAlert message={message} />
-            <div className="mt-4 text-center text-sm">
-              {"Don't have an account? "}
-              <Link href="/signup" className="text-blue-600 hover:underline">
-                Sign up
-              </Link>
-            </div>
-          </form>
-        </AuthCard>
-      </div>
+    <div className="flex min-h-[100dvh] items-center justify-center bg-gray-100 px-4 dark:bg-gray-950">
+      <AuthCard
+        title="Login to DeliverIQ"
+        description="Enter your credentials to access your account."
+        footer={
+          <div className="mt-4 text-center text-sm">
+            Don&apos;t have an account?{" "}
+            <Link className="underline" href="/signup">
+              Sign up
+            </Link>
+          </div>
+        }
+      >
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="role">Login as</Label>
+            <Select value={role} onValueChange={setRole} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Select your role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="customer">Customer</SelectItem>
+                <SelectItem value="driver">Driver</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Signing in..." : "Login"}
+          </Button>
+          <StatusAlert message={message} />
+        </form>
+      </AuthCard>
     </div>
   )
 }
