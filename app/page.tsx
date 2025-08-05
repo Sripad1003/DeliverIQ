@@ -63,7 +63,7 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <Truck className="h-8 w-8 text-blue-600" />
-            <h1 className="text-2xl font-bold text-gray-900">Trolla</h1>
+            <h1 className="text-2xl font-bold text-gray-900">DeliverIQ</h1>
           </div>
           <div className="flex space-x-4 items-center">
             {isLoggedIn ? (
@@ -171,7 +171,7 @@ export default function HomePage() {
       {/* Features Section */}
       <section className="py-16 px-4">
         <div className="container mx-auto">
-          <h3 className="text-3xl font-bold text-center mb-12">Why Choose Trolla?</h3>
+          <h3 className="text-3xl font-bold text-center mb-12">Why Choose DeliverIQ?</h3>
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center">
               <Star className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
@@ -197,7 +197,7 @@ export default function HomePage() {
         <div className="container mx-auto text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
             <Truck className="h-6 w-6" />
-            <span className="text-xl font-bold">Trolla</span>
+            <span className="text-xl font-bold">DeliverIQ</span>
           </div>
           <p className="text-gray-400">Connecting customers and drivers for efficient goods transportation</p>
         </div>

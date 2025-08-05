@@ -96,7 +96,7 @@ export const initializeAppData = async () => {
       {
         id: "cust1",
         name: "Customer User",
-        email: "customer@trolla.com",
+        email: "customer@deliveriq.com",
         passwordHash: defaultPasswordHash,
         phone: "9876543210",
         address: "123 Customer St, Mumbai",
@@ -105,7 +105,7 @@ export const initializeAppData = async () => {
       {
         id: "cust2",
         name: "Priya Sharma",
-        email: "priya@trolla.com",
+        email: "priya@deliveriq.com",
         passwordHash: customer2PasswordHash,
         phone: "9123456789",
         address: "456 Lake View, Bangalore",
@@ -125,7 +125,7 @@ export const initializeAppData = async () => {
       {
         id: "driver1",
         name: "Driver User",
-        email: "driver@trolla.com",
+        email: "driver@deliveriq.com",
         passwordHash: defaultPasswordHash,
         phone: "9988776655",
         vehicleType: "truck",
@@ -138,7 +138,7 @@ export const initializeAppData = async () => {
       {
         id: "driver2",
         name: "Amit Singh",
-        email: "amit@trolla.com",
+        email: "amit@deliveriq.com",
         passwordHash: driver2PasswordHash,
         phone: "8765432109",
         vehicleType: "car",
@@ -151,7 +151,7 @@ export const initializeAppData = async () => {
       {
         id: "driver3",
         name: "Sunita Devi",
-        email: "sunita@trolla.com",
+        email: "sunita@deliveriq.com",
         passwordHash: driver3PasswordHash,
         phone: "7654321098",
         vehicleType: "auto",

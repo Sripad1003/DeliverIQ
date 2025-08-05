@@ -25,7 +25,7 @@ export default function ManageAdminsPage() {
     {
       id: "1",
       name: "Super Admin",
-      email: "admin@trolla.com",
+      email: "admin@deliveriq.com",
       createdAt: "2024-01-01",
       createdBy: "System",
       status: "active",
@@ -143,7 +143,7 @@ export default function ManageAdminsPage() {
             <div className="flex justify-between items-center">
               <div>
                 <CardTitle>Administrator Accounts</CardTitle>
-                <CardDescription>Manage admin access to the Trolla platform</CardDescription>
+                <CardDescription>Manage admin access to the DeliverIQ platform</CardDescription>
               </div>
               <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogTrigger asChild>

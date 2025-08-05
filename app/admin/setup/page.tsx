@@ -12,7 +12,7 @@ import { initializeAdminData, getSecurityKeyPlain, setSecurityKey } from "@/lib/
 import { generateSecureKey } from "@/lib/security" // Add this import
 
 export default function AdminSetupPage() {
-  const [currentKey, setCurrentKey] = useState("TROLLA_ADMIN_2024")
+  const [currentKey, setCurrentKey] = useState("DELIVERIQ_ADMIN_2024")
   const [newKey, setNewKey] = useState("")
   const [confirmKey, setConfirmKey] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
@@ -196,7 +196,7 @@ export default function AdminSetupPage() {
             <div className="grid md:grid-cols-3 gap-4">
               <div className="p-4 border rounded-lg">
                 <h4 className="font-semibold mb-2">Admin Email</h4>
-                <p className="font-mono text-sm bg-gray-100 p-2 rounded">admin@trolla.com</p>
+                <p className="font-mono text-sm bg-gray-100 p-2 rounded">admin@deliveriq.com</p>
               </div>
               <div className="p-4 border rounded-lg">
                 <h4 className="font-semibold mb-2">Password</h4>

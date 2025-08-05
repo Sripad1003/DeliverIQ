@@ -78,7 +78,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <PageHeaderWithBack title="Trolla" backLink="/" icon={Truck} />
+        <PageHeaderWithBack title="DeliverIQ" backLink="/" icon={Truck} />
 
         <AuthCard title="Welcome Back" description="Sign in to your account to continue">
           <form onSubmit={handleLogin} className="space-y-4">

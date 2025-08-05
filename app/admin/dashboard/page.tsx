@@ -276,6 +276,9 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
+        <p className="text-center text-gray-500 text-sm mt-4">
+          © {new Date().getFullYear()} DeliverIQ. All rights reserved.
+        </p>
       </main>
     </div>
   )

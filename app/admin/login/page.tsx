@@ -94,7 +94,7 @@ export default function AdminLoginPage() {
               Enter your admin credentials to access the control panel
               <br />
               <span className="text-xs text-gray-500 mt-1 block">
-                Default: admin@trolla.com / admin123 / TROLLA_ADMIN_2024
+                Default: admin@deliveriq.com / admin123 / DELIVERIQ_ADMIN_2024
               </span>
             </>
           }
@@ -154,7 +154,7 @@ export default function AdminLoginPage() {
         </div>
 
         <div className="mt-6 text-center text-xs text-gray-500">
-          All admin access attempts are logged for security purposes
+          All DeliverIQ admin access attempts are logged for security purposes
         </div>
       </div>
     </div>

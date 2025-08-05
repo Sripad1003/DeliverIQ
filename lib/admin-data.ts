@@ -18,7 +18,7 @@ export const initializeAdminData = async () => {
     const defaultAdmin: Admin = {
       id: "1",
       name: "Super Admin",
-      email: "admin@trolla.com",
+      email: "admin@deliveriq.com",
       passwordHash: defaultPasswordHash,
       createdAt: "2024-01-01",
       createdBy: "System",
@@ -30,10 +30,10 @@ export const initializeAdminData = async () => {
   // Initialize default security key if none exists
   const existingKey = localStorage.getItem("adminSecurityKey")
   if (!existingKey) {
-    const defaultKeyHash = await hashSecurityKey("TROLLA_ADMIN_2024")
+    const defaultKeyHash = await hashSecurityKey("DELIVERIQ_ADMIN_2024")
     localStorage.setItem("adminSecurityKey", defaultKeyHash)
     // Store the plain key temporarily for initial setup (remove in production)
-    localStorage.setItem("adminSecurityKeyPlain", "TROLLA_ADMIN_2024")
+    localStorage.setItem("adminSecurityKeyPlain", "DELIVERIQ_ADMIN_2024")
   }
 }
 
@@ -56,7 +56,7 @@ export const getSecurityKeyHash = (): string => {
 
 export const getSecurityKeyPlain = (): string => {
   // This is for display purposes only - remove in production
-  return localStorage.getItem("adminSecurityKeyPlain") || "TROLLA_ADMIN_2024"
+  return localStorage.getItem("adminSecurityKeyPlain") || "DELIVERIQ_ADMIN_2024"
 }
 
 export const setSecurityKey = async (key: string): Promise<void> => {

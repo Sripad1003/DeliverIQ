@@ -140,7 +140,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <PageHeaderWithBack title="Trolla" backLink="/" icon={Truck} />
+        <PageHeaderWithBack title="DeliverIQ" backLink="/" icon={Truck} />
 
         <StatusAlert message={message} />
 
