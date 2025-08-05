@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -10,34 +9,69 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Truck, ArrowLeft } from "lucide-react"
+import { Truck, ArrowLeft, AlertTriangle } from "lucide-react"
+import { initializeAppData, getCustomers, getDrivers, loginCustomer, loginDriver } from "@/lib/app-data"
+import { verifyPassword } from "@/lib/security"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [role, setRole] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("") // Add error state
   const router = useRouter()
+
+  useEffect(() => {
+    initializeAppData()
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError("") // Clear previous errors
 
-    // Simulate authentication
-    setTimeout(() => {
-      // Route based on role
-      switch (role) {
-        case "customer":
+    try {
+      if (role === "customer") {
+        const customers = getCustomers()
+        const customer = customers.find((c) => c.email === email)
+
+        if (customer && (await verifyPassword(password, customer.passwordHash))) {
+          loginCustomer({
+            id: customer.id,
+            email: customer.email,
+            name: customer.name,
+            loginTime: new Date().toISOString(),
+          })
           router.push("/customer/dashboard")
-          break
-        case "driver":
+        } else {
+          setError("Invalid customer credentials.")
+        }
+      } else if (role === "driver") {
+        const drivers = getDrivers()
+        const driver = drivers.find((d) => d.email === email)
+
+        if (driver && (await verifyPassword(password, driver.passwordHash))) {
+          loginDriver({
+            id: driver.id,
+            email: driver.email,
+            name: driver.name,
+            vehicleType: driver.vehicleType,
+            loginTime: new Date().toISOString(),
+          })
           router.push("/driver/dashboard")
-          break
-        default:
-          alert("Please select a role")
+        } else {
+          setError("Invalid driver credentials.")
+        }
+      } else {
+        setError("Please select a role.")
       }
+    } catch (err) {
+      console.error("Login error:", err)
+      setError("An unexpected error occurred during login.")
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   return (
@@ -99,13 +133,19 @@ export default function LoginPage() {
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
+              {error && (
+                <Alert className="border-red-200 bg-red-50 mt-4">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800">{error}</AlertDescription>
+                </Alert>
+              )}
+              <div className="mt-4 text-center text-sm">
+                {"Don't have an account? "}
+                <Link href="/signup" className="text-blue-600 hover:underline">
+                  Sign up
+                </Link>
+              </div>
             </form>
-            <div className="mt-4 text-center text-sm">
-              {"Don't have an account? "}
-              <Link href="/signup" className="text-blue-600 hover:underline">
-                Sign up
-              </Link>
-            </div>
           </CardContent>
         </Card>
       </div>
