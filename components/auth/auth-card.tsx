@@ -3,22 +3,24 @@ import type React from "react"
 
 interface AuthCardProps {
   title: string
-  description: string
+  description?: string
   children: React.ReactNode
-  footer?: React.ReactNode
+  icon?: React.ElementType
+  iconColorClass?: string
+  titleColorClass?: string
 }
 
-export function AuthCard({ title, description, children, footer }: AuthCardProps) {
+export function AuthCard({ title, description, children, icon: Icon, iconColorClass, titleColorClass }: AuthCardProps) {
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="space-y-1 text-center">
-        <CardTitle className="text-2xl font-bold">{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+    <Card>
+      <CardHeader className="space-y-1">
+        <CardTitle className={`text-2xl text-center flex items-center justify-center gap-2 ${titleColorClass}`}>
+          {Icon && <Icon className={`h-6 w-6 ${iconColorClass}`} />}
+          <span>{title}</span>
+        </CardTitle>
+        {description && <CardDescription className="text-center">{description}</CardDescription>}
       </CardHeader>
-      <CardContent className="grid gap-4">
-        {children}
-        {footer && <div className="mt-4 text-center text-sm">{footer}</div>}
-      </CardContent>
+      <CardContent>{children}</CardContent>
     </Card>
   )
 }
