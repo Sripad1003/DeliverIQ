@@ -1,117 +1,146 @@
-'use client'
+"use client"
 
-import { useState } from "react"
+import type React from "react"
+import { useState, useEffect } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { AuthCard } from "@/components/auth/auth-card"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { StatusAlert } from "@/components/ui/status-alert"
-import { customerLogin, driverLogin } from "@/actions/user-actions"
-import { toast } from "sonner"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Truck } from 'lucide-react'
+import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
+import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
+import { AuthCard } from "@/components/auth/auth-card" // Import AuthCard
+import { initializeAppData, getCustomers, getDrivers, loginCustomer, loginDriver, SecureStorage } from "@/lib/app-data"
+import { verifyPassword } from "@/lib/security"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [userType, setUserType] = useState<"customer" | "driver">("customer")
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [role, setRole] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [message, setMessage] = useState({ type: "", text: "" }) // Use message state for errors
   const router = useRouter()
+
+  useEffect(() => {
+    initializeAppData()
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError(null)
-    setLoading(true)
+    setIsLoading(true)
+    setMessage({ type: "", text: "" }) // Clear previous messages
 
     try {
-      let result
-      if (userType === "customer") {
-        result = await customerLogin(email, password)
-      } else {
-        result = await driverLogin(email, password)
-      }
+      if (role === "customer") {
+        const customers = await getCustomers()
+        const customer = customers.find((c) => c.email === email)
 
-      if (result.success) {
-        toast.success(`${userType === "customer" ? "Customer" : "Driver"} login successful!`)
-        router.push(`/${userType}/dashboard`)
+        if (customer && (await verifyPassword(password, customer.passwordHash))) {
+          // Update last login time
+          const updatedCustomers = customers.map(c => 
+            c.id === customer.id ? { ...c, lastLoginAt: new Date().toISOString() } : c
+          )
+          await SecureStorage.storeCustomers(updatedCustomers)
+          
+          loginCustomer({
+            id: customer.id,
+            email: customer.email,
+            name: customer.name,
+            loginTime: new Date().toISOString(),
+          })
+          router.push("/customer/dashboard")
+        } else {
+          setMessage({ type: "error", text: "Invalid customer credentials." })
+        }
+      } else if (role === "driver") {
+        const drivers = await getDrivers()
+        const driver = drivers.find((d) => d.email === email)
+
+        if (driver && (await verifyPassword(password, driver.passwordHash))) {
+          // Update last login time
+          const updatedDrivers = drivers.map(d => 
+            d.id === driver.id ? { ...d, lastLoginAt: new Date().toISOString() } : d
+          )
+          await SecureStorage.storeDrivers(updatedDrivers)
+          
+          loginDriver({
+            id: driver.id,
+            email: driver.email,
+            name: driver.name,
+            vehicleType: driver.vehicleType,
+            loginTime: new Date().toISOString(),
+          })
+          router.push("/driver/dashboard")
+        } else {
+          setMessage({ type: "error", text: "Invalid driver credentials." })
+        }
       } else {
-        setError(result.message)
-        toast.error(result.message)
+        setMessage({ type: "error", text: "Please select a role." })
       }
     } catch (err) {
       console.error("Login error:", err)
-      setError("An unexpected error occurred. Please try again.")
-      toast.error("An unexpected error occurred.")
+      setMessage({ type: "error", text: "An unexpected error occurred during login." })
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-      <AuthCard
-        title="Login"
-        description="Access your DeliverIQ account"
-        footerText="Don't have an account?"
-        footerLinkText="Sign Up"
-        footerLinkHref="/signup"
-      >
-        <form onSubmit={handleLogin} className="space-y-4">
-          {error && <StatusAlert type="error" message={error} />}
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="m@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="********"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          <div className="flex items-center space-x-4">
-            <Label htmlFor="user-type">Login as:</Label>
-            <div className="flex items-center space-x-2">
-              <input
-                type="radio"
-                id="customer"
-                name="userType"
-                value="customer"
-                checked={userType === "customer"}
-                onChange={() => setUserType("customer")}
-                className="form-radio h-4 w-4 text-primary"
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <PageHeaderWithBack title="DeliverIQ" backLink="/" icon={Truck} />
+
+        <AuthCard title="Welcome Back" description="Sign in to your account to continue">
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
               />
-              <Label htmlFor="customer">Customer</Label>
             </div>
-            <div className="flex items-center space-x-2">
-              <input
-                type="radio"
-                id="driver"
-                name="userType"
-                value="driver"
-                checked={userType === "driver"}
-                onChange={() => setUserType("driver")}
-                className="form-radio h-4 w-4 text-primary"
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
               />
-              <Label htmlFor="driver">Driver</Label>
             </div>
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Logging in..." : "Login"}
-          </Button>
-        </form>
-      </AuthCard>
+            <div className="space-y-2">
+              <Label htmlFor="role">Login as</Label>
+              <Select value={role} onValueChange={setRole} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="customer">Customer</SelectItem>
+                  <SelectItem value="driver">Driver</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Signing in..." : "Sign In"}
+            </Button>
+            <StatusAlert message={message} />
+            <div className="mt-4 text-center text-sm">
+              {"Don't have an account? "}
+              <Link href="/signup" className="text-blue-600 hover:underline">
+                Sign up
+              </Link>
+            </div>
+          </form>
+        </AuthCard>
+      </div>
     </div>
   )
 }

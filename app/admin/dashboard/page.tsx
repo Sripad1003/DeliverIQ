@@ -1,248 +1,326 @@
-'use client'
+"use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { DashboardHeader } from "@/components/layout/dashboard-header"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Users, Truck, Package, TrendingUp, AlertCircle, CheckCircle, Shield, Key, Database } from 'lucide-react'
+import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
-import { getOrders } from "@/actions/order-actions"
-import { OrderStatus, OrderType } from "@/lib/app-data-types"
-import { getAdmins } from "@/actions/admin-actions"
-import { AdminType } from "@/lib/admin-data"
-import { toast } from "sonner"
+import { StatusAlert } from "@/components/ui/status-alert"
+import { DashboardHeader } from "@/components/layout/dashboard-header"
+import { getCustomers, getDrivers, getOrders, OrderStatus, Customer, Driver, Order } from "@/lib/app-data"
 
-export default function AdminDashboardPage() {
-  const [orders, setOrders] = useState<OrderType[]>([])
-  const [admins, setAdmins] = useState<AdminType[]>([])
+// Helper for comparing arrays of objects by their stringified content
+const areArraysOfObjectsEqual = (arr1: any[], arr2: any[]) => {
+  if (arr1.length !== arr2.length) return false
+  for (let i = 0; i < arr1.length; i++) {
+    if (JSON.stringify(arr1[i]) !== JSON.stringify(arr2[i])) {
+      return false
+    }
+  }
+  return true
+}
+
+export default function AdminDashboard() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [showAccessDenied, setShowAccessDenied] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+
+  // State for dynamic data
+  const [totalUsers, setTotalUsers] = useState(0)
+  const [activeDrivers, setActiveDrivers] = useState(0)
+  const [todaysOrders, setTodaysOrders] = useState(0)
+  const [totalRevenue, setTotalRevenue] = useState(0)
+  const [recentRegistrations, setRecentRegistrations] = useState<
+    { name: string; role: string; location?: string; vehicleType?: string; status?: string }[]
+  >([])
 
   useEffect(() => {
+    if (searchParams.get("accessDenied") === "true") {
+      setShowAccessDenied(true)
+      // Clear the query param after showing the message
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.delete("accessDenied")
+      router.replace(newUrl.pathname + newUrl.search, undefined)
+    }
+
+    // Fetch and calculate dynamic data asynchronously
     const fetchData = async () => {
       try {
-        const fetchedOrders = await getOrders()
-        setOrders(fetchedOrders)
-        const fetchedAdmins = await getAdmins()
-        setAdmins(fetchedAdmins)
-      } catch (err) {
-        console.error("Failed to fetch data:", err)
-        setError("Failed to load dashboard data. Please try again.")
-        toast.error("Failed to load dashboard data.")
+        setLoading(true)
+        
+        const [customers, drivers, orders] = await Promise.all([
+          getCustomers(),
+          getDrivers(), 
+          getOrders()
+        ])
+
+        // Calculate Total Users
+        setTotalUsers(customers.length + drivers.length)
+
+        // Calculate Active Drivers (drivers with accepted or in-transit orders)
+        const driversWithActiveOrders = new Set(
+          orders
+            .filter(
+              (order) =>
+                order.driverId && (order.status === OrderStatus.accepted || order.status === OrderStatus.inTransit),
+            )
+            .map((order) => order.driverId),
+        )
+        setActiveDrivers(driversWithActiveOrders.size)
+
+        // Calculate Today's Orders
+        const today = new Date().toISOString().split("T")[0]
+        const ordersToday = orders.filter((order) => order.createdAt.split("T")[0] === today)
+        setTodaysOrders(ordersToday.length)
+
+        // Calculate Total Revenue (from completed and paid orders)
+        const revenue = orders.reduce((sum, order) => {
+          if (order.status === OrderStatus.completed && order.paymentStatus === "paid") {
+            return sum + order.price
+          }
+          return sum
+        }, 0)
+        setTotalRevenue(revenue)
+
+        // Get Recent User Registrations (last 5, combining customers and drivers)
+        const allUsers = [
+          ...customers.map((c) => ({
+            name: c.name,
+            role: "Customer",
+            location: c.address.split(",").pop()?.trim(),
+            createdAt: c.createdAt,
+            status: c.isVerified ? "Verified" : "Pending",
+          })),
+          ...drivers.map((d) => ({
+            name: d.name,
+            role: "Driver",
+            vehicleType: d.vehicleType.charAt(0).toUpperCase() + d.vehicleType.slice(1),
+            location: "N/A", // Driver location not stored in app-data, can be added if needed
+            createdAt: d.createdAt,
+            status: d.isVerified ? "Verified" : "Pending",
+          })),
+        ]
+        const sortedRecentRegistrations = allUsers
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 5) // Get top 5 recent registrations
+
+        // Only update state if the content of the array has actually changed
+        if (!areArraysOfObjectsEqual(recentRegistrations, sortedRecentRegistrations)) {
+          setRecentRegistrations(sortedRecentRegistrations as any)
+        }
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error)
       } finally {
         setLoading(false)
       }
     }
+
     fetchData()
-  }, [])
+  }, [searchParams, router])
+
+  const handleLogout = () => {
+    localStorage.removeItem("adminSession")
+    window.location.href = "/"
+  }
 
   if (loading) {
     return (
-      <div className="flex flex-col min-h-screen bg-gray-100 dark:bg-gray-900">
-        <header className="bg-white dark:bg-gray-800 shadow p-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">DeliverIQ Admin Dashboard</h1>
-          <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-        </header>
-        <main className="flex-1 p-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard data...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <DashboardHeader title="Admin Dashboard" onLogout={handleLogout} />
+
+      <main className="container mx-auto px-4 py-8">
+        <StatusAlert
+          message={
+            showAccessDenied
+              ? { type: "error", text: "Access Denied: Only the Super Admin can access the Security Setup page." }
+              : { type: "", text: "" }
+          }
+        />
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-              <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
-            </CardHeader>
-            <CardContent>
-              <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded mb-2 animate-pulse" />
-              <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Deliveries</CardTitle>
-              <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
-            </CardHeader>
-            <CardContent>
-              <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded mb-2 animate-pulse" />
-              <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Drivers</CardTitle>
-              <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
-            </CardHeader>
-            <CardContent>
-              <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded mb-2 animate-pulse" />
-              <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-            </CardContent>
-          </Card>
-          <Card className="col-span-full">
             <CardHeader>
-              <CardTitle>Recent Orders</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-600" />
+                Total Users
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{totalUsers}</p>
+              <p className="text-sm text-gray-600">Customers & Drivers</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Truck className="h-5 w-5 text-green-600" />
+                Active Drivers
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{activeDrivers}</p>
+              <p className="text-sm text-gray-600">Drivers on active trips</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-purple-600" />
+                Today's Orders
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{todaysOrders}</p>
+              <p className="text-sm text-gray-600">Orders created today</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-orange-600" />
+                Revenue
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">₹{totalRevenue.toFixed(2)}</p>
+              <p className="text-sm text-gray-600">From completed & paid orders</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent User Registrations</CardTitle>
+              <CardDescription>Latest users who joined the platform</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="h-6 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                    <div className="h-6 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                    <div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                  </div>
-                ))}
+                {recentRegistrations.length > 0 ? (
+                  recentRegistrations.map((user, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold">{user.name}</p>
+                        <p className="text-sm text-gray-600">
+                          {user.role} • {user.role === "Driver" && user.vehicleType ? `${user.vehicleType} • ` : ""}
+                          {user.location}
+                        </p>
+                      </div>
+                      <Badge variant={user.status === "Verified" ? "default" : "secondary"}>{user.status}</Badge>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-center">No recent registrations.</p>
+                )}
               </div>
             </CardContent>
           </Card>
-        </main>
-      </div>
-    )
-  }
 
-  if (error) {
-    return (
-      <div className="flex flex-col min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900 text-red-500">
-        <p>{error}</p>
-        <Button onClick={() => window.location.reload()} className="mt-4">
-          Retry
-        </Button>
-      </div>
-    )
-  }
-
-  const totalOrders = orders.length
-  const pendingDeliveries = orders.filter(
-    (order) => order.status === OrderStatus.Pending || order.status === OrderStatus.InProgress
-  ).length
-  const activeDrivers = admins.filter((admin) => admin.status === "active").length // Assuming 'admins' here refers to drivers or a combined list
-
-  const recentOrders = orders
-    .sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime())
-    .slice(0, 5)
-
-  return (
-    <div className="flex flex-col min-h-screen bg-gray-100 dark:bg-gray-900">
-      <DashboardHeader title="DeliverIQ Admin Dashboard" />
-      <main className="flex-1 p-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-            <Package2Icon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalOrders}</div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">All time orders</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Deliveries</CardTitle>
-            <TruckIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pendingDeliveries}</div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Orders awaiting or in progress</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Drivers</CardTitle>
-            <UsersIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeDrivers}</div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Currently available drivers</p>
-          </CardContent>
-        </Card>
-        <Card className="col-span-full">
-          <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentOrders.length > 0 ? (
-                recentOrders.map((order) => (
-                  <div key={order._id} className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Order #{order._id?.slice(-6)}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {order.pickupLocation} to {order.deliveryLocation}
-                      </p>
-                    </div>
-                    <div className="text-sm font-medium">{order.status}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      {new Date(order.orderDate).toLocaleDateString()}
-                    </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>System Alerts</CardTitle>
+              <CardDescription>Issues requiring attention</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-500" />
+                  <div>
+                    <p className="font-semibold">Payment Failed</p>
+                    <p className="text-sm text-gray-600">Order #1234 payment issue</p>
                   </div>
-                ))
-              ) : (
-                <p className="text-gray-500 dark:text-gray-400">No recent orders.</p>
-              )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="h-5 w-5 text-yellow-500" />
+                  <div>
+                    <p className="font-semibold">Driver Verification</p>
+                    <p className="text-sm text-gray-600">3 drivers pending verification</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <div>
+                    <p className="font-semibold">System Update</p>
+                    <p className="text-sm text-gray-600">Successfully deployed v2.1</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Platform Management</CardTitle>
+            <CardDescription>Quick actions and controls</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <Link href="/admin/manage-users">
+                <Button className="h-20 flex flex-col w-full">
+                  <Users className="h-6 w-6 mb-2" />
+                  Manage Users
+                </Button>
+              </Link>
+              <Link href="/admin/driver-verification">
+                <Button variant="outline" className="h-20 flex flex-col bg-transparent w-full">
+                  <Truck className="h-6 w-6 mb-2" />
+                  Driver Verification
+                </Button>
+              </Link>
+              <Link href="/admin/order-management">
+                <Button variant="outline" className="h-20 flex flex-col bg-transparent w-full">
+                  <Package className="h-6 w-6 mb-2" />
+                  Order Management
+                </Button>
+              </Link>
+              <Link href="/admin/manage-admins">
+                <Button variant="outline" className="h-20 flex flex-col bg-transparent w-full">
+                  <Shield className="h-6 w-6 mb-2" />
+                  Admin Management
+                </Button>
+              </Link>
+              <Link href="/admin/setup">
+                <Button
+                  variant="outline"
+                  className="h-20 flex flex-col bg-transparent w-full border-red-200 hover:bg-red-50"
+                >
+                  <Key className="h-6 w-6 mb-2 text-red-600" />
+                  Security Setup
+                </Button>
+              </Link>
+              <Link href="/admin/data-transparency">
+                <Button
+                  variant="outline"
+                  className="h-20 flex flex-col bg-transparent w-full border-blue-200 hover:bg-blue-50"
+                >
+                  <Database className="h-6 w-6 mb-2 text-blue-600" />
+                  Data Transparency
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
+        <p className="text-center text-gray-500 text-sm mt-4">
+          © {new Date().getFullYear()} DeliverIQ. All rights reserved.
+        </p>
       </main>
     </div>
-  )
-}
-
-function Package2Icon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z" />
-      <path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.79 1.1L21 9" />
-      <path d="M12 3v6" />
-    </svg>
-  )
-}
-
-function TruckIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
-      <path d="M15 18H9" />
-      <path d="M19 18h2a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1h-2" />
-      <path d="M14 18l4 4h3" />
-      <path d="M17 9h3l2 3" />
-      <circle cx="7" cy="18" r="2" />
-      <circle cx="18" cy="18" r="2" />
-    </svg>
-  )
-}
-
-function UsersIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
   )
 }

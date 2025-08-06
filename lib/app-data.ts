@@ -1,111 +1,382 @@
-import { getCustomerByEmail, getDriverByEmail, customerLogout as customerLogoutAction, driverLogout as driverLogoutAction } from "@/actions/user-actions"
-import { CustomerType, DriverType } from "@/lib/app-data-types"
+import { hashPassword } from "./security"
+import { SecureStorage } from "./server-storage"
 
-// This file acts as a client-side wrapper/helper for user-related actions.
-// It primarily uses Server Actions for actual data persistence and logic.
+// Enums and Types (keeping existing ones)
+export const enum OrderStatus {
+  pending = "pending",
+  accepted = "accepted", 
+  inTransit = "in-transit",
+  completed = "completed",
+  cancelled = "cancelled"
+}
 
-// In a real application, session management would be handled more robustly
-// (e.g., using NextAuth.js or a custom JWT-based system with httpOnly cookies).
-// For this demo, we'll use localStorage for simplicity in client-side session tracking.
+export type PaymentStatus = "pending" | "paid" | "failed"
+export type VehicleType = "bike" | "auto" | "car" | "van" | "truck"
 
-const CUSTOMER_SESSION_KEY = "deliveriq_customer_session"
-const DRIVER_SESSION_KEY = "deliveriq_driver_session"
+export interface Item {
+  name: string
+  quantity: number
+  weight: number
+  length: number
+  width: number
+  height: number
+}
 
-export async function getCustomerSession(): Promise<CustomerType | null> {
-  if (typeof window === "undefined") {
-    // This function is called from a Server Component (e.g., app/customer/dashboard/page.tsx)
-    // In a real app, you'd check for a server-side session (e.g., from cookies)
-    // For this demo, we'll return a dummy customer if no session is found,
-    // assuming the server component will handle redirection if no real session exists.
-    // This is a simplification for the v0 preview environment.
-    return {
-      _id: "server-customer-id",
-      email: "customer@deliveriq.com",
-      passwordHash: "", // Not used on client
-      name: "Demo Customer",
-    };
+export interface Customer {
+  id: string
+  name: string
+  email: string
+  phone: string
+  address: string
+  passwordHash: string
+  createdAt: string
+  lastLoginAt?: string
+  isVerified: boolean
+  status: "active" | "suspended" | "banned"
+}
+
+export interface Driver {
+  id: string
+  name: string
+  email: string
+  phone: string
+  vehicleType: VehicleType
+  vehicleNumber: string
+  licenseNumber: string
+  passwordHash: string
+  rating: number
+  totalTrips: number
+  createdAt: string
+  lastLoginAt?: string
+  isVerified: boolean
+  status: "active" | "suspended" | "banned"
+  documentsVerified: boolean
+}
+
+export interface Order {
+  id: string
+  customerId: string
+  driverId?: string
+  items: Item[]
+  pickupLocation: string
+  deliveryLocation: string
+  pickupDate: string
+  pickupTime: string
+  suggestedVehicleType: VehicleType
+  price: number
+  status: OrderStatus
+  paymentStatus: PaymentStatus
+  createdAt: string
+  acceptedAt?: string
+  inTransitAt?: string
+  completedAt?: string
+  driverLocation?: string
+  rating?: number
+  adminNotes?: string
+}
+
+export interface CustomerSession {
+  id: string
+  email: string
+  name: string
+  loginTime: string
+}
+
+export interface DriverSession {
+  id: string
+  email: string
+  name: string
+  vehicleType: VehicleType
+  rating?: number
+  totalTrips?: number
+  loginTime: string
+}
+
+// Initialize sample data with enhanced security
+export async function initializeAppData() {
+  if (typeof window === "undefined") return
+
+  // Initialize customers with encrypted storage
+  const existingCustomers = await SecureStorage.getCustomers()
+  if (existingCustomers.length === 0) {
+    const sampleCustomers: Customer[] = [
+      {
+        id: "1",
+        name: "John Doe",
+        email: "john@example.com",
+        phone: "+91 9876543210",
+        address: "123 Main St, Mumbai, Maharashtra",
+        passwordHash: await hashPassword("password123"),
+        createdAt: new Date().toISOString(),
+        isVerified: true,
+        status: "active"
+      },
+      {
+        id: "2", 
+        name: "Jane Smith",
+        email: "jane@example.com",
+        phone: "+91 9876543211",
+        address: "456 Oak Ave, Delhi, Delhi",
+        passwordHash: await hashPassword("password123"),
+        createdAt: new Date().toISOString(),
+        isVerified: true,
+        status: "active"
+      }
+    ]
+    await SecureStorage.storeCustomers(sampleCustomers)
   }
-  const sessionData = localStorage.getItem(CUSTOMER_SESSION_KEY)
-  if (sessionData) {
-    return JSON.parse(sessionData) as CustomerType
+
+  // Initialize drivers with encrypted storage
+  const existingDrivers = await SecureStorage.getDrivers()
+  if (existingDrivers.length === 0) {
+    const sampleDrivers: Driver[] = [
+      {
+        id: "1",
+        name: "Raj Kumar",
+        email: "raj@example.com", 
+        phone: "+91 9876543212",
+        vehicleType: "truck",
+        vehicleNumber: "MH-01-AB-1234",
+        licenseNumber: "DL123456789",
+        passwordHash: await hashPassword("password123"),
+        rating: 4.5,
+        totalTrips: 25,
+        createdAt: new Date().toISOString(),
+        isVerified: true,
+        status: "active",
+        documentsVerified: true
+      },
+      {
+        id: "2",
+        name: "Amit Singh",
+        email: "amit@example.com",
+        phone: "+91 9876543213", 
+        vehicleType: "van",
+        vehicleNumber: "DL-02-CD-5678",
+        licenseNumber: "DL987654321",
+        passwordHash: await hashPassword("password123"),
+        rating: 4.2,
+        totalTrips: 18,
+        createdAt: new Date().toISOString(),
+        isVerified: true,
+        status: "active",
+        documentsVerified: true
+      }
+    ]
+    await SecureStorage.storeDrivers(sampleDrivers)
   }
+
+  // Initialize orders with encrypted storage
+  const existingOrders = await SecureStorage.getOrders()
+  if (existingOrders.length === 0) {
+    const sampleOrders: Order[] = [
+      {
+        id: "1",
+        customerId: "1",
+        driverId: "1",
+        items: [
+          { name: "Furniture", quantity: 1, weight: 50, length: 2, width: 1, height: 1 }
+        ],
+        pickupLocation: "Mumbai, Bandra",
+        deliveryLocation: "Pune, Koregaon Park", 
+        pickupDate: "2024-01-15",
+        pickupTime: "10:00",
+        suggestedVehicleType: "truck",
+        price: 2500,
+        status: OrderStatus.completed,
+        paymentStatus: "paid",
+        createdAt: "2024-01-10T10:00:00Z",
+        acceptedAt: "2024-01-10T11:00:00Z",
+        inTransitAt: "2024-01-15T10:30:00Z",
+        completedAt: "2024-01-15T16:00:00Z",
+        rating: 5
+      },
+      {
+        id: "2",
+        customerId: "2",
+        items: [
+          { name: "Electronics", quantity: 3, weight: 15, length: 0.5, width: 0.3, height: 0.2 }
+        ],
+        pickupLocation: "Delhi, Connaught Place",
+        deliveryLocation: "Gurgaon, Cyber City",
+        pickupDate: "2024-01-20",
+        pickupTime: "14:00",
+        suggestedVehicleType: "van",
+        price: 800,
+        status: OrderStatus.pending,
+        paymentStatus: "pending",
+        createdAt: new Date().toISOString()
+      }
+    ]
+    await SecureStorage.storeOrders(sampleOrders)
+  }
+}
+
+// Updated functions to use secure storage
+export async function getCustomers(): Promise<Customer[]> {
+  return await SecureStorage.getCustomers()
+}
+
+export async function createCustomer(customerData: {
+  name: string
+  email: string
+  password: string
+  phone: string
+  address: string
+}): Promise<Customer> {
+  const passwordHash = await hashPassword(customerData.password)
+  
+  const newCustomer: Customer = {
+    id: Date.now().toString(),
+    name: customerData.name,
+    email: customerData.email,
+    phone: customerData.phone,
+    address: customerData.address,
+    passwordHash,
+    createdAt: new Date().toISOString(),
+    isVerified: false,
+    status: "active"
+  }
+
+  const customers = await getCustomers()
+  customers.push(newCustomer)
+  await SecureStorage.storeCustomers(customers)
+  
+  return newCustomer
+}
+
+export async function getDrivers(): Promise<Driver[]> {
+  return await SecureStorage.getDrivers()
+}
+
+export async function createDriver(driverData: {
+  name: string
+  email: string
+  password: string
+  phone: string
+  vehicleType: VehicleType
+  vehicleNumber: string
+  licenseNumber: string
+}): Promise<Driver> {
+  const passwordHash = await hashPassword(driverData.password)
+  
+  const newDriver: Driver = {
+    id: Date.now().toString(),
+    name: driverData.name,
+    email: driverData.email,
+    phone: driverData.phone,
+    vehicleType: driverData.vehicleType,
+    vehicleNumber: driverData.vehicleNumber,
+    licenseNumber: driverData.licenseNumber,
+    passwordHash,
+    rating: 0,
+    totalTrips: 0,
+    createdAt: new Date().toISOString(),
+    isVerified: false,
+    status: "active",
+    documentsVerified: false
+  }
+
+  const drivers = await getDrivers()
+  drivers.push(newDriver)
+  await SecureStorage.storeDrivers(drivers)
+  
+  return newDriver
+}
+
+export async function getOrders(): Promise<Order[]> {
+  return await SecureStorage.getOrders()
+}
+
+export async function createOrder(orderData: Omit<Order, "id" | "createdAt" | "status" | "paymentStatus">): Promise<Order> {
+  const newOrder: Order = {
+    ...orderData,
+    id: Date.now().toString(),
+    status: OrderStatus.pending,
+    paymentStatus: "pending",
+    createdAt: new Date().toISOString()
+  }
+
+  const orders = await getOrders()
+  orders.push(newOrder)
+  await SecureStorage.storeOrders(orders)
+  
+  return newOrder
+}
+
+export async function updateOrder(updatedOrder: Order) {
+  const orders = await getOrders()
+  const index = orders.findIndex(order => order.id === updatedOrder.id)
+  if (index !== -1) {
+    orders[index] = updatedOrder
+    await SecureStorage.storeOrders(orders)
+  }
+}
+
+export async function getOrderById(orderId: string): Promise<Order | null> {
+  const orders = await getOrders()
+  return orders.find(order => order.id === orderId) || null
+}
+
+export async function cancelOrder(orderId: string): Promise<boolean> {
+  const orders = await getOrders()
+  const order = orders.find(o => o.id === orderId)
+  
+  if (order && order.status === OrderStatus.pending) {
+    order.status = OrderStatus.cancelled
+    await SecureStorage.storeOrders(orders)
+    return true
+  }
+  
+  return false
+}
+
+// Keep existing session management functions
+export function loginCustomer(session: CustomerSession) {
+  if (typeof window === "undefined") return
+  localStorage.setItem("customerSession", JSON.stringify(session))
+}
+
+export function getCustomerSession(): CustomerSession | null {
+  if (typeof window === "undefined") return null
+  const data = localStorage.getItem("customerSession")
+  return data ? JSON.parse(data) : null
+}
+
+export function loginDriver(session: DriverSession) {
+  if (typeof window === "undefined") return
+  localStorage.setItem("driverSession", JSON.stringify(session))
+}
+
+export function getDriverSession(): DriverSession | null {
+  if (typeof window === "undefined") return null
+  const data = localStorage.getItem("driverSession")
+  return data ? JSON.parse(data) : null
+}
+
+export async function updateDriverRating(driverId: string, newRating: number) {
+  const drivers = await getDrivers()
+  const driver = drivers.find(d => d.id === driverId)
+  
+  if (driver) {
+    const totalRating = driver.rating * driver.totalTrips + newRating
+    driver.totalTrips += 1
+    driver.rating = totalRating / driver.totalTrips
+    await SecureStorage.storeDrivers(drivers)
+  }
+}
+
+export function getCurrentUserSession(): (CustomerSession & { role: "customer" }) | (DriverSession & { role: "driver" }) | null {
+  const customerSession = getCustomerSession()
+  const driverSession = getDriverSession()
+  
+  if (customerSession) {
+    return { ...customerSession, role: "customer" }
+  }
+  
+  if (driverSession) {
+    return { ...driverSession, role: "driver" }
+  }
+  
   return null
-}
-
-export async function setCustomerSession(customer: CustomerType): Promise<void> {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(customer))
-  }
-}
-
-export async function clearCustomerSession(): Promise<void> {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem(CUSTOMER_SESSION_KEY)
-  }
-}
-
-export async function getDriverSession(): Promise<DriverType | null> {
-  if (typeof window === "undefined") {
-    // Similar to getCustomerSession for server components
-    return {
-      _id: "server-driver-id",
-      email: "driver@deliveriq.com",
-      passwordHash: "", // Not used on client
-      name: "Demo Driver",
-      vehicleType: "Car",
-      licensePlate: "DEMO123",
-      averageRating: 4.5,
-      totalRatings: 10,
-    };
-  }
-  const sessionData = localStorage.getItem(DRIVER_SESSION_KEY)
-  if (sessionData) {
-    return JSON.parse(sessionData) as DriverType
-  }
-  return null
-}
-
-export async function setDriverSession(driver: DriverType): Promise<void> {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(DRIVER_SESSION_KEY, JSON.stringify(driver))
-  }
-}
-
-export async function clearDriverSession(): Promise<void> {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem(DRIVER_SESSION_KEY)
-  }
-}
-
-// Wrapper for Server Actions
-export async function customerLoginClient(email: string, password: string): Promise<{ success: boolean; message?: string }> {
-  const result = await getCustomerByEmail(email);
-  if (result.success && result.customer) {
-    // In a real app, password verification would happen on the server.
-    // For this client-side wrapper, we're relying on the server action's internal logic.
-    await setCustomerSession(result.customer); // Set session if server action indicates success
-    return { success: true };
-  }
-  return { success: false, message: result.message || "Invalid credentials." };
-}
-
-export async function driverLoginClient(email: string, password: string): Promise<{ success: boolean; message?: string }> {
-  const result = await getDriverByEmail(email);
-  if (result.success && result.driver) {
-    // In a real app, password verification would happen on the server.
-    // For this client-side wrapper, we're relying on the server action's internal logic.
-    await setDriverSession(result.driver); // Set session if server action indicates success
-    return { success: true };
-  }
-  return { success: false, message: result.message || "Invalid credentials." };
-}
-
-export async function customerLogout(): Promise<void> {
-  await customerLogoutAction();
-  await clearCustomerSession();
-}
-
-export async function driverLogout(): Promise<void> {
-  await driverLogoutAction();
-  await clearDriverSession();
 }

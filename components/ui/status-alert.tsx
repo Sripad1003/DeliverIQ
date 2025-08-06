@@ -1,27 +1,26 @@
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { CheckCircleIcon, XCircleIcon, InfoIcon } from 'lucide-react'
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { cn } from "@/lib/utils"
 
 interface StatusAlertProps {
-  type: "success" | "error" | "info"
-  message: string
-  title?: string
+  message: {
+    type: string
+    text: string
+  }
+  className?: string
 }
 
-export function StatusAlert({ type, message, title }: StatusAlertProps) {
-  const Icon =
-    type === "success"
-      ? CheckCircleIcon
-      : type === "error"
-      ? XCircleIcon
-      : InfoIcon
+export function StatusAlert({ message, className }: StatusAlertProps) {
+  if (!message.text) return null
 
-  const variant = type === "error" ? "destructive" : "default"
+  const alertClasses = {
+    success: "alert-success",
+    error: "alert-error", 
+    warning: "alert-warning"
+  }
 
   return (
-    <Alert variant={variant}>
-      <Icon className="h-4 w-4" />
-      <AlertTitle>{title || (type === "success" ? "Success" : type === "error" ? "Error" : "Info")}</AlertTitle>
-      <AlertDescription>{message}</AlertDescription>
+    <Alert className={cn(alertClasses[message.type as keyof typeof alertClasses] || "alert-error", className)}>
+      <AlertDescription>{message.text}</AlertDescription>
     </Alert>
   )
 }

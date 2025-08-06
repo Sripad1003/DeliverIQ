@@ -1,78 +1,30 @@
-# DeliverIQ
+# Trolla project
 
-DeliverIQ is a comprehensive logistics and delivery management platform.
+*Automatically synced with your [v0.dev](https://v0.dev) deployments*
 
-## Features
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/sripad1003s-projects/v0-deliver-iq)
+[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/GOXnIHkKZbk)
 
-- **Customer Portal**: Book transport, track orders, rate drivers.
-- **Driver Portal**: Manage deliveries, update status.
-- **Admin Dashboard**: Manage admins, view overall statistics, manage security settings.
-- **Real-time Updates**: (Future feature) Track driver locations and order status in real-time.
-- **MongoDB Integration**: Persistent storage for all user, admin, driver, and order data.
+## Overview
 
-## Getting Started
-
-### 1. Clone the repository
-
-\`\`\`bash
-git clone https://github.com/your-username/DeliverIQ.git
-cd DeliverIQ
-\`\`\`
-
-### 2. Install dependencies
-
-\`\`\`bash
-npm install
-# or
-yarn install
-\`\`\`
-
-### 3. Set up Environment Variables
-
-Create a `.env.local` file in the root of your project and add your MongoDB connection string:
-
-\`\`\`
-MONGODB_URI=mongodb+srv://chiliverysripad:Sripad1003@cluster0.hmzrnnp.mongodb.net/
-\`\`\`
-
-Replace the placeholder with your actual MongoDB connection string.
-
-### 4. Run the development server
-
-\`\`\`bash
-npm run dev
-# or
-yarn dev
-\`\`\`
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-### Default Accounts (for initial testing after MongoDB seeding)
-
-Upon first load, the application will seed the database with the following demo accounts:
-
-**Admin:**
-- Email: `admin@deliveriq.com`
-- Password: `admin123`
-- Admin Security Key: `DELIVERIQ_ADMIN_2024`
-
-**Customer:**
-- Email: `customer@deliveriq.com`
-- Password: `customer123`
-
-**Driver:**
-- Email: `driver@deliveriq.com`
-- Password: `driver123`
-
-### Project Structure
-
-- `app/`: Next.js App Router pages and layouts.
-- `actions/`: Server Actions for database interactions.
-- `components/`: Reusable React components (UI, layout, auth).
-- `lib/`: Utility functions, data models, and MongoDB connection.
-- `public/`: Static assets.
-- `styles/`: Global CSS.
+This repository will stay  in sync with your deployed chats on [v0.dev](https://v0.dev).
+Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
 
 ## Deployment
 
-This project can be easily deployed to Vercel. Ensure your `MONGODB_URI` environment variable is set in your Vercel project settings.
+Your project is live at:
+
+**[https://vercel.com/sripad1003s-projects/v0-deliver-iq](https://vercel.com/sripad1003s-projects/v0-deliver-iq)**
+
+## Build your app
+
+Continue building your app on:
+
+**[https://v0.dev/chat/projects/GOXnIHkKZbk](https://v0.dev/chat/projects/GOXnIHkKZbk)**
+
+## How It Works
+
+1. Create and modify your project using [v0.dev](https://v0.dev)
+2. Deploy your chats from the v0 interface
+3. Changes are automatically pushed to this repository
+4. Vercel deploys the latest version from this repository

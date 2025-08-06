@@ -1,106 +1,98 @@
-// This file can be used for any vehicle-related logic, e.g., calculating optimal routes,
-// estimating delivery times based on vehicle type, etc.
-// For now, it's a placeholder.
+import type { Item } from "./app-data"
 
-export function calculateEstimatedDeliveryTime(distanceKm: number, vehicleType: string): string {
-    let speedKmPerHour: number;
+export type VehicleType = "bike" | "auto" | "car" | "van" | "truck"
 
-    switch (vehicleType.toLowerCase()) {
-        case 'motorcycle':
-            speedKmPerHour = 30; // Average city speed
-            break;
-        case 'car':
-            speedKmPerHour = 40; // Average city speed
-            break;
-        case 'van':
-            speedKmPerHour = 35;
-            break;
-        case 'truck':
-            speedKmPerHour = 25;
-            break;
-        default:
-            speedKmPerHour = 30; // Default to motorcycle speed
-    }
-
-    const hours = distanceKm / speedKmPerHour;
-    const minutes = Math.round(hours * 60);
-
-    if (minutes < 60) {
-        return `${minutes} minutes`;
-    } else {
-        const estHours = Math.floor(minutes / 60);
-        const remainingMinutes = minutes % 60;
-        return `${estHours} hours ${remainingMinutes} minutes`;
-    }
+interface VehicleCapacity {
+  maxWeight: number // kg
+  maxVolume: number // cubic meters
+  basePrice: number // base price per km
+  description: string
 }
 
-export function getVehicleType(weight: number, dimensions: { length: number; width: number; height: number }): string {
-  const volume = dimensions.length * dimensions.width * dimensions.height;
-
-  if (weight <= 50 && volume <= 0.5) {
-    return "Motorcycle";
-  } else if (weight <= 500 && volume <= 5) {
-    return "Car";
-  } else if (weight <= 2000 && volume <= 15) {
-    return "Van";
-  } else if (weight <= 10000 && volume <= 50) {
-    return "Truck";
-  } else {
-    return "Heavy Duty Truck";
+const VEHICLE_CAPACITIES: Record<VehicleType, VehicleCapacity> = {
+  bike: {
+    maxWeight: 20,
+    maxVolume: 0.1,
+    basePrice: 5,
+    description: "Small items, documents"
+  },
+  auto: {
+    maxWeight: 100,
+    maxVolume: 0.5,
+    basePrice: 8,
+    description: "Medium packages, groceries"
+  },
+  car: {
+    maxWeight: 200,
+    maxVolume: 1.0,
+    basePrice: 12,
+    description: "Luggage, small furniture"
+  },
+  van: {
+    maxWeight: 500,
+    maxVolume: 3.0,
+    basePrice: 18,
+    description: "Furniture, appliances"
+  },
+  truck: {
+    maxWeight: 2000,
+    maxVolume: 10.0,
+    basePrice: 25,
+    description: "Heavy goods, bulk items"
   }
 }
 
-export function calculateDeliveryTime(distanceKm: number, trafficFactor: number = 1): number {
-  // Average speed in km/h (e.g., 40 km/h for urban areas)
-  const averageSpeedKmH = 40;
-  const baseTimeHours = distanceKm / averageSpeedKmH;
-
-  // Apply traffic factor (1.0 for no traffic, >1.0 for more traffic)
-  const adjustedTimeHours = baseTimeHours * trafficFactor;
-
-  // Convert to minutes
-  return adjustedTimeHours * 60;
+export function calculateDistance(pickup: string, delivery: string): number {
+  // Simplified distance calculation
+  // In real app, use Google Maps API or similar
+  const hash = pickup.length + delivery.length
+  return Math.max(10, hash * 2 + Math.random() * 50)
 }
 
-export function calculateDeliveryCost(distanceKm: number, itemWeightKg: number, vehicleType: string): number {
-  let baseRatePerKm = 0.5; // USD per km
-  let weightRatePerKg = 0.1; // USD per kg
-
-  // Adjust rates based on vehicle type
-  switch (vehicleType) {
-    case "Motorcycle":
-      baseRatePerKm = 0.3;
-      weightRatePerKg = 0.05;
-      break;
-    case "Car":
-      baseRatePerKm = 0.5;
-      weightRatePerKg = 0.1;
-      break;
-    case "Van":
-      baseRatePerKm = 0.8;
-      weightRatePerKg = 0.2;
-      break;
-    case "Truck":
-      baseRatePerKm = 1.2;
-      weightRatePerKg = 0.3;
-      break;
-    case "Heavy Duty Truck":
-      baseRatePerKm = 1.8;
-      weightRatePerKg = 0.5;
-      break;
-  }
-
-  const distanceCost = distanceKm * baseRatePerKm;
-  const weightCost = itemWeightKg * weightRatePerKg;
-
-  // Add a small flat fee for handling
-  const handlingFee = 2.0;
-
-  return distanceCost + weightCost + handlingFee;
+export function calculateItemVolume(item: Item): number {
+  return item.length * item.width * item.height * item.quantity
 }
 
-// You could add more complex logic here, e.g.,
-// export function getAvailableVehicles(location: string, itemWeight: number): string[] {
-//     // Logic to filter vehicles based on location and item capacity
-//     return ['Motorcycle', 'Car', 'Van', 'Truck'];
-// }
+export function calculateTotalWeight(items: Item[]): number {
+  return items.reduce((total, item) => total + (item.weight * item.quantity), 0)
+}
+
+export function calculateTotalVolume(items: Item[]): number {
+  return items.reduce((total, item) => total + calculateItemVolume(item), 0)
+}
+
+export function suggestVehicles(items: Item[], distance: number): Array<{
+  type: VehicleType
+  estimatedPrice: number
+  description: string
+}> {
+  const totalWeight = calculateTotalWeight(items)
+  const totalVolume = calculateTotalVolume(items)
+  
+  const suggestions: Array<{
+    type: VehicleType
+    estimatedPrice: number
+    description: string
+  }> = []
+
+  // Check each vehicle type
+  Object.entries(VEHICLE_CAPACITIES).forEach(([type, capacity]) => {
+    if (totalWeight <= capacity.maxWeight && totalVolume <= capacity.maxVolume) {
+      const basePrice = capacity.basePrice * distance
+      const weightFactor = totalWeight / capacity.maxWeight
+      const volumeFactor = totalVolume / capacity.maxVolume
+      const utilizationFactor = Math.max(weightFactor, volumeFactor)
+      
+      const estimatedPrice = basePrice * (1 + utilizationFactor * 0.5)
+      
+      suggestions.push({
+        type: type as VehicleType,
+        estimatedPrice: Math.round(estimatedPrice),
+        description: capacity.description
+      })
+    }
+  })
+
+  // Sort by price (cheapest first)
+  return suggestions.sort((a, b) => a.estimatedPrice - b.estimatedPrice)
+}
