@@ -1,258 +1,102 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Shield, UserPlus, Trash2 } from "lucide-react"
-import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
-import { DashboardHeader } from "@/components/layout/dashboard-header" // Import DashboardHeader
-import { initializeAdminData, getAdminData, setAdminData, createAdmin } from "@/lib/admin-data"
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { DashboardHeader } from '@/components/layout/dashboard-header'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
+import { Admin } from '@/lib/app-data'
+import { getAdmins, updateAdminStatus, deleteAdmin } from '@/actions/admin-actions'
+import { toast } from 'sonner'
 
 export default function ManageAdminsPage() {
-  const [admins, setAdmins] = useState([
-    {
-      id: "1",
-      name: "Super Admin",
-      email: "admin@deliveriq.com",
-      createdAt: "2024-01-01",
-      createdBy: "System",
-      status: "active",
-    },
-  ])
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [newAdmin, setNewAdmin] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  })
-  const [isLoading, setIsLoading] = useState(false)
-  const [message, setMessage] = useState({ type: "", text: "" })
+  const [admins, setAdmins] = useState<Admin[]>([])
+  const [loading, setLoading] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
-    // Check if user is authenticated admin
-    const adminSession = localStorage.getItem("adminSession")
-    if (!adminSession) {
-      router.push("/admin/login")
-      return
+    const adminId = localStorage.getItem('currentAdminId');
+    if (!adminId) {
+      router.push('/admin/login');
+      return;
     }
+    fetchAdminsData();
+  }, [router]);
 
-    // Initialize and load admin data
-    initializeAdminData()
-    const loadedAdmins = getAdminData()
-    setAdmins(loadedAdmins)
-  }, [router])
+  const fetchAdminsData = async () => {
+    setLoading(true);
+    const fetchedAdmins = await getAdmins();
+    setAdmins(fetchedAdmins);
+    setLoading(false);
+  };
 
-  const persistAdmins = (adminData) => {
-    setAdminData(adminData)
+  const handleStatusChange = async (adminId: string, isActive: boolean) => {
+    const result = await updateAdminStatus(adminId, isActive);
+    if (result.success) {
+      toast.success('Admin status updated successfully.');
+      fetchAdminsData(); // Re-fetch to ensure UI is consistent
+    } else {
+      toast.error(result.message || 'Failed to update admin status.');
+    }
   }
 
-  const handleCreateAdmin = async (e) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setMessage({ type: "", text: "" })
-
-    if (newAdmin.password !== newAdmin.confirmPassword) {
-      setMessage({ type: "error", text: "Passwords don't match" })
-      setIsLoading(false)
-      return
+  const handleDeleteAdmin = async (adminId: string) => {
+    if (window.confirm('Are you sure you want to delete this admin?')) {
+      const result = await deleteAdmin(adminId);
+      if (result.success) {
+        toast.success('Admin deleted successfully.');
+        fetchAdminsData(); // Re-fetch to update the list
+      } else {
+        toast.error(result.message || 'Failed to delete admin.');
+      }
     }
-
-    if (newAdmin.password.length < 8) {
-      setMessage({ type: "error", text: "Password must be at least 8 characters long" })
-      setIsLoading(false)
-      return
-    }
-
-    try {
-      // Create admin with hashed password
-      const newAdminData = await createAdmin({
-        name: newAdmin.name,
-        email: newAdmin.email,
-        password: newAdmin.password,
-      })
-
-      const updatedAdmins = [...admins, newAdminData]
-      setAdmins(updatedAdmins)
-      persistAdmins(updatedAdmins)
-
-      setMessage({ type: "success", text: "Admin account created successfully with encrypted password" })
-      setNewAdmin({ name: "", email: "", password: "", confirmPassword: "" })
-      setIsCreateDialogOpen(false)
-    } catch (error) {
-      setMessage({ type: "error", text: "Failed to create admin account" })
-    }
-
-    setIsLoading(false)
   }
 
-  const handleSuspendAdmin = (adminId) => {
-    const updatedAdmins = admins.map((admin) =>
-      admin.id === adminId ? { ...admin, status: admin.status === "active" ? "suspended" : "active" } : admin,
-    )
-    setAdmins(updatedAdmins)
-    persistAdmins(updatedAdmins) // Persist to localStorage
-  }
-
-  const handleDeleteAdmin = (adminId) => {
-    if (adminId === "1") {
-      setMessage({ type: "error", text: "Cannot delete the super admin account" })
-      return
-    }
-    const updatedAdmins = admins.filter((admin) => admin.id !== adminId)
-    setAdmins(updatedAdmins)
-    persistAdmins(updatedAdmins) // Persist to localStorage
-    setMessage({ type: "success", text: "Admin account deleted successfully" })
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem("adminSession")
-    router.push("/")
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center">
+        <p>Loading admins...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardHeader title="Admin Management" onLogout={handleLogout} homeLink="/admin/dashboard" />
-
-      <main className="container mx-auto px-4 py-8">
-        <StatusAlert
-          message={{
-            type: "warning",
-            text: "Security Notice: Only create admin accounts for trusted personnel. All admin activities are logged and monitored.",
-          }}
-          className="mb-6 border-red-200 bg-red-50 text-red-800"
-        />
-
-        <StatusAlert message={message} />
-
+    <div className="flex min-h-screen w-full flex-col">
+      <DashboardHeader title="Manage Admins" />
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle>Administrator Accounts</CardTitle>
-                <CardDescription>Manage admin access to the DeliverIQ platform</CardDescription>
-              </div>
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-red-600 hover:bg-red-700">
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Create Admin
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create New Admin Account</DialogTitle>
-                    <DialogDescription>Create a new administrator account with full platform access.</DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleCreateAdmin} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
-                      <Input
-                        id="name"
-                        placeholder="Enter full name"
-                        value={newAdmin.name}
-                        onChange={(e) => setNewAdmin((prev) => ({ ...prev, name: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="Enter email address"
-                        value={newAdmin.email}
-                        onChange={(e) => setNewAdmin((prev) => ({ ...prev, email: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="Create secure password (min 8 chars)"
-                        value={newAdmin.password}
-                        onChange={(e) => setNewAdmin((prev) => ({ ...prev, password: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm Password</Label>
-                      <Input
-                        id="confirmPassword"
-                        type="password"
-                        placeholder="Confirm password"
-                        value={newAdmin.confirmPassword}
-                        onChange={(e) => setNewAdmin((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div className="flex justify-end space-x-2 pt-4">
-                      <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={isLoading} className="bg-red-600 hover:bg-red-700">
-                        {isLoading ? "Creating..." : "Create Admin"}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
+            <CardTitle>Admin Accounts</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {admins.map((admin) => (
-                <div key={admin.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <Shield className="h-8 w-8 text-red-600" />
+            <div className="grid gap-4">
+              {admins.length === 0 ? (
+                <p>No admin accounts found.</p>
+              ) : (
+                admins.map((admin) => (
+                  <div key={admin.id} className="flex items-center justify-between rounded-md border p-4">
                     <div>
-                      <h3 className="font-semibold">{admin.name}</h3>
-                      <p className="text-sm text-gray-600">{admin.email}</p>
-                      <p className="text-xs text-gray-500">
-                        Created: {admin.createdAt} by {admin.createdBy}
-                      </p>
+                      <p className="font-medium">{admin.name}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{admin.email}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id={`admin-status-${admin.id}`}
+                          checked={admin.isActive}
+                          onCheckedChange={(checked) => handleStatusChange(admin.id, checked)}
+                        />
+                        <Label htmlFor={`admin-status-${admin.id}`}>Active</Label>
+                      </div>
+                      <Button variant="destructive" size="sm" onClick={() => handleDeleteAdmin(admin.id)}>
+                        Delete
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge
-                      variant={admin.status === "active" ? "default" : "secondary"}
-                      className={admin.status === "active" ? "bg-green-600" : "bg-gray-500"}
-                    >
-                      {admin.status}
-                    </Badge>
-                    {admin.id !== "1" && (
-                      <>
-                        <Button size="sm" variant="outline" onClick={() => handleSuspendAdmin(admin.id)}>
-                          {admin.status === "active" ? "Suspend" : "Activate"}
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleDeleteAdmin(admin.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
-                    {admin.id === "1" && (
-                      <Badge variant="outline" className="text-blue-600 border-blue-600">
-                        Super Admin
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

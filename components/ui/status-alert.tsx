@@ -1,27 +1,47 @@
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertTriangle, CheckCircle } from "lucide-react"
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { OrderStatus } from '@/lib/app-data'
 
 interface StatusAlertProps {
-  message: { type: string; text: string }
-  className?: string
+  status: OrderStatus;
 }
 
-export function StatusAlert({ message, className }: StatusAlertProps) {
-  if (!message.text) return null
+export function StatusAlert({ status }: StatusAlertProps) {
+  let variant: 'default' | 'destructive' = 'default';
+  let badgeVariant: 'default' | 'secondary' | 'destructive' | 'outline' = 'default';
+  let description = '';
 
-  const isError = message.type === "error"
-  const alertClass = isError ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"
-  const iconClass = isError ? "text-red-600" : "text-green-600"
-  const descriptionClass = isError ? "text-red-800" : "text-green-800"
+  switch (status) {
+    case OrderStatus.Pending:
+      badgeVariant = 'secondary';
+      description = 'Your order is awaiting assignment to a driver.';
+      break;
+    case OrderStatus.Assigned:
+      badgeVariant = 'default';
+      description = 'A driver has been assigned and is on their way to pickup.';
+      break;
+    case OrderStatus.PickedUp:
+      badgeVariant = 'default';
+      description = 'Your order has been picked up and is in transit.';
+      break;
+    case OrderStatus.Delivered:
+      badgeVariant = 'outline';
+      description = 'Your order has been successfully delivered.';
+      break;
+    case OrderStatus.Cancelled:
+      variant = 'destructive';
+      badgeVariant = 'destructive';
+      description = 'Your order has been cancelled.';
+      break;
+    default:
+      badgeVariant = 'secondary';
+      description = 'Unknown order status.';
+  }
 
   return (
-    <Alert className={`mb-6 ${alertClass} ${className}`}>
-      {isError ? (
-        <AlertTriangle className={`h-4 w-4 ${iconClass}`} />
-      ) : (
-        <CheckCircle className={`h-4 w-4 ${iconClass}`} />
-      )}
-      <AlertDescription className={descriptionClass}>{message.text}</AlertDescription>
+    <Alert variant={variant} className="p-2">
+      <Badge variant={badgeVariant}>{status}</Badge>
+      <AlertDescription className="sr-only">{description}</AlertDescription>
     </Alert>
-  )
+  );
 }

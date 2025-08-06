@@ -1,288 +1,255 @@
-"use client"
+'use client'
 
-import Link from "next/link"
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { DashboardHeader } from '@/components/layout/dashboard-header'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { StatusAlert } from '@/components/ui/status-alert'
+import { getDriverSession, getDriverOrders, updateOrderStatus, updateOrderPickupTime, updateOrderDeliveryTime, Order, OrderStatus } from '@/lib/app-data'
+import { toast } from 'sonner'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Car, Star, DollarSign, Clock, MapPin, Package, Calendar } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
-import { DashboardHeader } from "@/components/layout/dashboard-header" // Import DashboardHeader
-import { getDriverSession, getOrders, updateOrder, type Order, OrderStatus } from "@/lib/app-data"
-
-export default function DriverDashboard() {
+export default function DriverDashboardPage() {
+  const [driverName, setDriverName] = useState('Driver')
+  const [orders, setOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const [driverSession, setDriverSession] = useState(null)
-  const [availableJobs, setAvailableJobs] = useState<Order[]>([])
-  const [activeTrip, setActiveTrip] = useState<Order | null>(null)
-  const [tripHistory, setTripHistory] = useState<Order[]>([])
-
-  const refreshOrders = () => {
-    const session = getDriverSession()
-    if (!session) {
-      router.push("/login")
-      return
-    }
-    setDriverSession(session)
-
-    const allOrders = getOrders()
-    const driverVehicleType = session.vehicleType
-
-    // Filter available jobs: pending, not assigned, and matching vehicle type
-    const pendingJobs = allOrders.filter(
-      (order) =>
-        order.status === OrderStatus.pending && !order.driverId && order.suggestedVehicleType === driverVehicleType,
-    )
-    setAvailableJobs(pendingJobs)
-
-    // Find active trip
-    const currentTrip = allOrders.find(
-      (order) =>
-        order.driverId === session.id &&
-        (order.status === OrderStatus.accepted || order.status === OrderStatus.inTransit),
-    )
-    setActiveTrip(currentTrip || null)
-
-    // Filter trip history
-    const completedTrips = allOrders.filter(
-      (order) => order.driverId === session.id && order.status === OrderStatus.completed,
-    )
-    setTripHistory(completedTrips)
-  }
 
   useEffect(() => {
-    refreshOrders()
-  }, [router])
+    const currentUserId = localStorage.getItem('currentUserId');
+    const currentUserType = localStorage.getItem('currentUserType');
 
-  const handleAcceptJob = (orderId: string) => {
-    if (!driverSession) return
-    const orders = getOrders()
-    const orderToUpdate = orders.find((order) => order.id === orderId)
-
-    if (orderToUpdate) {
-      const updatedOrder = {
-        ...orderToUpdate,
-        driverId: driverSession.id,
-        status: OrderStatus.accepted,
-        acceptedAt: new Date().toISOString(),
-      }
-      updateOrder(updatedOrder)
-      refreshOrders() // Refresh state after update
+    if (!currentUserId || currentUserType !== 'driver') {
+      router.push('/login');
+      return;
     }
-  }
 
-  const handleMarkInTransit = (orderId: string) => {
-    if (!driverSession) return
-    const orders = getOrders()
-    const orderToUpdate = orders.find((order) => order.id === orderId)
-
-    if (orderToUpdate) {
-      const updatedOrder = {
-        ...orderToUpdate,
-        status: OrderStatus.inTransit,
-        inTransitAt: new Date().toISOString(),
-        driverLocation: orderToUpdate.pickupLocation, // Set initial driver location
+    const fetchDriverData = async () => {
+      setLoading(true);
+      const driver = await getDriverSession(currentUserId);
+      if (driver) {
+        setDriverName(driver.name);
+        const driverOrders = await getDriverOrders(currentUserId);
+        setOrders(driverOrders);
+      } else {
+        toast.error('Failed to load driver data. Please log in again.');
+        router.push('/login');
       }
-      updateOrder(updatedOrder)
-      refreshOrders() // Refresh state after update
+      setLoading(false);
+    };
+
+    fetchDriverData();
+  }, [router]);
+
+  const handleUpdateStatus = async (orderId: string, currentStatus: OrderStatus) => {
+    let newStatus: OrderStatus | null = null;
+    let updateAction: ((orderId: string, time: string) => Promise<boolean>) | null = null;
+
+    if (currentStatus === OrderStatus.Assigned) {
+      newStatus = OrderStatus.PickedUp;
+      updateAction = updateOrderPickupTime;
+    } else if (currentStatus === OrderStatus.PickedUp) {
+      newStatus = OrderStatus.Delivered;
+      updateAction = updateOrderDeliveryTime;
     }
-  }
 
-  const handleCompleteTrip = (orderId: string) => {
-    if (!driverSession) return
-    const orders = getOrders()
-    const orderToUpdate = orders.find((order) => order.id === orderId)
-
-    if (orderToUpdate) {
-      const updatedOrder = {
-        ...orderToUpdate,
-        status: OrderStatus.completed,
-        completedAt: new Date().toISOString(),
-        driverLocation: orderToUpdate.deliveryLocation, // Final location
+    if (newStatus) {
+      setLoading(true);
+      const statusResult = await updateOrderStatus(orderId, newStatus);
+      if (statusResult) {
+        if (updateAction) {
+          const timeResult = await updateAction(orderId, new Date().toISOString());
+          if (!timeResult) {
+            toast.error(`Failed to update ${newStatus === OrderStatus.PickedUp ? 'pickup' : 'delivery'} time.`);
+          }
+        }
+        toast.success(`Order status updated to ${newStatus}.`);
+        // Refresh orders
+        const currentUserId = localStorage.getItem('currentUserId');
+        if (currentUserId) {
+          const updatedOrders = await getDriverOrders(currentUserId);
+          setOrders(updatedOrders);
+        }
+      } else {
+        toast.error('Failed to update order status.');
       }
-      updateOrder(updatedOrder)
-      refreshOrders() // Refresh state after update
+      setLoading(false);
     }
-  }
+  };
 
   const handleLogout = () => {
-    localStorage.removeItem("driverSession")
-    router.push("/")
+    localStorage.removeItem('currentUserId');
+    localStorage.removeItem('currentUserType');
+    toast.info('Logged out successfully.');
+    router.push('/login');
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center">
+        <p>Loading dashboard...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardHeader title="Driver Dashboard" onLogout={handleLogout} />
-
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="flex min-h-screen w-full flex-col">
+      <DashboardHeader title={`Welcome, ${driverName}!`} onLogout={handleLogout} />
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Car className="h-5 w-5 text-blue-600" />
-                Available Jobs
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Assigned Orders</CardTitle>
+              <Package2Icon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{availableJobs.length}</p>
-              <p className="text-sm text-gray-600">Jobs matching your vehicle</p>
+              <div className="text-2xl font-bold">
+                {orders.filter((order) => order.status === OrderStatus.Assigned || order.status === OrderStatus.PickedUp).length}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Orders currently assigned to you</p>
             </CardContent>
           </Card>
-
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-green-600" />
-                Total Earnings
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Completed Deliveries</CardTitle>
+              <CheckCircleIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{tripHistory.reduce((sum, trip) => sum + trip.price, 0).toFixed(2)}</p>
-              <p className="text-sm text-gray-600">From {tripHistory.length} completed trips</p>
+              <div className="text-2xl font-bold">
+                {orders.filter((order) => order.status === OrderStatus.Delivered).length}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Orders you have successfully delivered</p>
             </CardContent>
           </Card>
-
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Star className="h-5 w-5 text-yellow-600" />
-                Rating
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Your Rating</CardTitle>
+              <StarIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{driverSession?.rating?.toFixed(1) || "N/A"}</p>
-              <p className="text-sm text-gray-600">Based on {driverSession?.totalTrips || 0} reviews</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-purple-600" />
-                Active Trip
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {activeTrip ? (
-                <>
-                  <Badge variant="secondary">
-                    {activeTrip.status.charAt(0).toUpperCase() + activeTrip.status.slice(1)}
-                  </Badge>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {activeTrip.pickupLocation} to {activeTrip.deliveryLocation}
-                  </p>
-                  <p className="text-xs text-gray-500">Items: {activeTrip.items.map((item) => item.name).join(", ")}</p>
-                  <p className="text-xs text-gray-500">Price: ₹{activeTrip.price.toFixed(2)}</p>
-                  {activeTrip.status === OrderStatus.accepted && (
-                    <Button size="sm" className="mt-2 w-full" onClick={() => handleMarkInTransit(activeTrip.id)}>
-                      Mark as In-Transit
-                    </Button>
-                  )}
-                  {activeTrip.status === OrderStatus.inTransit && (
-                    <Button
-                      size="sm"
-                      className="mt-2 w-full bg-green-600 hover:bg-green-700"
-                      onClick={() => handleCompleteTrip(activeTrip.id)}
-                    >
-                      Mark as Completed
-                    </Button>
-                  )}
-                  <Link href={`/customer/track-order/${activeTrip.id}`}>
-                    <Button size="sm" variant="outline" className="mt-2 w-full bg-transparent">
-                      View Tracking
-                    </Button>
-                  </Link>
-                </>
-              ) : (
-                <p className="text-sm text-gray-600">No active trip.</p>
-              )}
+              <div className="text-2xl font-bold">
+                {/* This would ideally come from driver session data */}
+                {/* For now, a placeholder or calculated from orders if driver object had rating */}
+                {orders.length > 0 && orders[0].driverRating ? orders[0].driverRating : 'N/A'}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Average rating from customers</p>
             </CardContent>
           </Card>
         </div>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Available Jobs</CardTitle>
-              <CardDescription>Jobs matching your {driverSession?.vehicleType || "vehicle"}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {availableJobs.length > 0 ? (
-                  availableJobs.map((job) => (
-                    <div key={job.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <h3 className="font-semibold">{job.items.map((item) => item.name).join(", ")} Transport</h3>
-                        <p className="text-sm text-gray-600">
-                          <MapPin className="inline-block h-3 w-3 mr-1" />
-                          {job.pickupLocation} → {job.deliveryLocation}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <Package className="inline-block h-3 w-3 mr-1" />
-                          Load: {job.items.reduce((sum, item) => sum + item.weight * item.quantity, 0)} kg
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <Calendar className="inline-block h-3 w-3 mr-1" />
-                          Pickup: {job.pickupDate} at {job.pickupTime}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-green-600">₹{job.price.toFixed(2)}</p>
-                        <Button
-                          size="sm"
-                          className="mt-2"
-                          onClick={() => handleAcceptJob(job.id)}
-                          disabled={!!activeTrip}
-                        >
-                          {!!activeTrip ? "Trip Active" : "Accept"}
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-center">No available jobs matching your vehicle type.</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Trip History</CardTitle>
-              <CardDescription>Your recent completed trips</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {tripHistory.length > 0 ? (
-                  tripHistory.map((trip) => (
-                    <div key={trip.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <h3 className="font-semibold">Completed: {trip.items.map((item) => item.name).join(", ")}</h3>
-                        <p className="text-sm text-gray-600">
-                          {trip.pickupLocation} → {trip.deliveryLocation}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          On: {new Date(trip.completedAt || trip.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold">₹{trip.price.toFixed(2)}</p>
-                        <div className="flex items-center mt-1">
-                          <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                          <span className="text-sm ml-1">{driverSession?.rating?.toFixed(1) || "N/A"}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-center">No completed trips yet.</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">Your Deliveries</h2>
+        </div>
+        <div className="grid gap-4">
+          {orders.length === 0 ? (
+            <p>No orders assigned to you yet.</p>
+          ) : (
+            orders.map((order) => (
+              <Card key={order.id}>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Order #{order.id.substring(0, 8)}</CardTitle>
+                  <StatusAlert status={order.status} />
+                </CardHeader>
+                <CardContent className="grid gap-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Pickup:</p>
+                    <p className="text-sm font-medium">{order.pickupLocation}</p>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Delivery:</p>
+                    <p className="text-sm font-medium">{order.deliveryLocation}</p>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Item:</p>
+                    <p className="text-sm font-medium">{order.itemDescription}</p>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    {order.status === OrderStatus.Assigned && (
+                      <Button size="sm" onClick={() => handleUpdateStatus(order.id, OrderStatus.Assigned)} disabled={loading}>
+                        {loading ? 'Updating...' : 'Mark as Picked Up'}
+                      </Button>
+                    )}
+                    {order.status === OrderStatus.PickedUp && (
+                      <Button size="sm" onClick={() => handleUpdateStatus(order.id, OrderStatus.PickedUp)} disabled={loading}>
+                        {loading ? 'Updating...' : 'Mark as Delivered'}
+                      </Button>
+                    )}
+                    {order.status === OrderStatus.Delivered && (
+                      <Button size="sm" variant="outline" disabled>
+                        Delivered
+                      </Button>
+                    )}
+                    {order.status === OrderStatus.Cancelled && (
+                      <Button size="sm" variant="outline" disabled>
+                        Cancelled
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       </main>
     </div>
+  )
+}
+
+function Package2Icon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z" />
+      <path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.79 1.1L21 9" />
+      <path d="M12 3v6" />
+    </svg>
+  )
+}
+
+function CheckCircleIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+      <polyline points="22 4 12 14.01 9 11.01" />
+    </svg>
+  )
+}
+
+function StarIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
   )
 }

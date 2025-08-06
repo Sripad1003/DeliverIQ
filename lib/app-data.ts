@@ -1,347 +1,156 @@
-import { hashPassword } from "./security"
+import {
+  createCustomer as createCustomerAction,
+  verifyCustomerCredentials,
+  getCustomerById,
+  createDriver as createDriverAction,
+  verifyDriverCredentials,
+  getDriverById,
+  updateDriverRating as updateDriverRatingAction,
+} from '@/actions/user-actions';
+import {
+  createOrder as createOrderAction,
+  getOrders as fetchOrders,
+  getOrderById as fetchOrderById,
+  updateOrder as updateOrderAction,
+  cancelOrder as cancelOrderAction,
+  assignDriverToOrder as assignDriverToOrderAction,
+} from '@/actions/order-actions';
+import { Admin, Customer, Driver, Order, OrderStatus, VehicleType, PaymentMethod, DeliveryType, Rating } from './app-data-types'; // Assuming types are in a separate file now
 
-// --- Interfaces ---
+// Re-export types from a dedicated types file if you create one
+export { Admin, Customer, Driver, Order, OrderStatus, VehicleType, PaymentMethod, DeliveryType, Rating };
 
-export interface Item {
-  name: string
-  quantity: number
-  weight: number // in kg
-  length: number // in meters
-  width: number // in meters
-  height: number // in meters
+// --- User (Customer/Driver) Management ---
+
+export async function registerCustomer(customer: Omit<Customer, 'id'>): Promise<{ success: boolean; message: string; customerId?: string }> {
+  return await createCustomerAction(customer);
 }
 
-// Changed from type alias to const enum for runtime availability
-export enum OrderStatus {
-  pending = "pending",
-  accepted = "accepted",
-  inTransit = "in-transit",
-  completed = "completed",
-  cancelled = "cancelled",
-}
-
-export type PaymentStatus = "pending" | "paid" | "failed" // New: Payment status
-
-export interface Order {
-  id: string
-  customerId: string
-  driverId?: string // Optional, assigned when accepted
-  items: Item[]
-  pickupLocation: string
-  deliveryLocation: string
-  pickupDate: string
-  pickupTime: string
-  suggestedVehicleType: string // The vehicle type the customer selected
-  price: number
-  status: OrderStatus
-  paymentStatus: PaymentStatus // New: Payment status for the order
-  createdAt: string
-  acceptedAt?: string
-  inTransitAt?: string // New: Timestamp when order goes in-transit
-  completedAt?: string
-  rating?: number // New: Customer rating for this specific order (1-5)
-  driverLocation?: string // New: Driver's current location during transit
-}
-
-export interface Customer {
-  id: string
-  name: string
-  email: string
-  passwordHash: string
-  phone: string
-  address: string
-  createdAt: string
-}
-
-export interface Driver {
-  id: string
-  name: string
-  email: string
-  passwordHash: string
-  phone: string
-  vehicleType: "bike" | "auto" | "car" | "van" | "truck"
-  vehicleNumber: string
-  licenseNumber: string
-  rating: number // Average rating
-  totalTrips: number
-  createdAt: string
-}
-
-export interface CustomerSession {
-  id: string
-  email: string
-  name: string
-  loginTime: string
-  role: "customer" // Added role for session
-}
-
-export interface DriverSession {
-  id: string
-  email: string
-  name: string
-  vehicleType: "bike" | "auto" | "car" | "van" | "truck"
-  loginTime: string
-  role: "driver" // Added role for session
-}
-
-// --- Initialization and Persistence Functions ---
-
-export const initializeAppData = async () => {
-  // Initialize default customer if no customer data exists
-  const existingCustomers = localStorage.getItem("customerAccounts")
-  if (!existingCustomers) {
-    const defaultPasswordHash = await hashPassword("customer123")
-    const customer2PasswordHash = await hashPassword("customerpass")
-    const defaultCustomers: Customer[] = [
-      {
-        id: "cust1",
-        name: "Customer User",
-        email: "customer@deliveriq.com",
-        passwordHash: defaultPasswordHash,
-        phone: "9876543210",
-        address: "123 Customer St, Mumbai",
-        createdAt: "2024-01-01",
-      },
-      {
-        id: "cust2",
-        name: "Priya Sharma",
-        email: "priya@deliveriq.com",
-        passwordHash: customer2PasswordHash,
-        phone: "9123456789",
-        address: "456 Lake View, Bangalore",
-        createdAt: "2024-02-15",
-      },
-    ]
-    localStorage.setItem("customerAccounts", JSON.stringify(defaultCustomers))
+export async function loginCustomer(email: string, password: string): Promise<{ success: boolean; message: string; customerId?: string }> {
+  const result = await verifyCustomerCredentials(email, password);
+  if (result.success) {
+    return { success: true, message: 'Login successful!', customerId: result.customerId };
   }
+  return { success: false, message: result.message || 'Login failed.' };
+}
 
-  // Initialize default driver if no driver data exists
-  const existingDrivers = localStorage.getItem("driverAccounts")
-  if (!existingDrivers) {
-    const defaultPasswordHash = await hashPassword("driver123")
-    const driver2PasswordHash = await hashPassword("driverpass")
-    const driver3PasswordHash = await hashPassword("driverpass2")
-    const defaultDrivers: Driver[] = [
-      {
-        id: "driver1",
-        name: "Driver User",
-        email: "driver@deliveriq.com",
-        passwordHash: defaultPasswordHash,
-        phone: "9988776655",
-        vehicleType: "truck",
-        vehicleNumber: "MH01AB1234",
-        licenseNumber: "DL1234567890",
-        rating: 4.5,
-        totalTrips: 10,
-        createdAt: "2024-01-01",
-      },
-      {
-        id: "driver2",
-        name: "Amit Singh",
-        email: "amit@deliveriq.com",
-        passwordHash: driver2PasswordHash,
-        phone: "8765432109",
-        vehicleType: "car",
-        vehicleNumber: "DL05CD5678",
-        licenseNumber: "UP9876543210",
-        rating: 4.8,
-        totalTrips: 25,
-        createdAt: "2024-03-01",
-      },
-      {
-        id: "driver3",
-        name: "Sunita Devi",
-        email: "sunita@deliveriq.com",
-        passwordHash: driver3PasswordHash,
-        phone: "7654321098",
-        vehicleType: "auto",
-        vehicleNumber: "KA02EF9012",
-        licenseNumber: "RJ1234567890",
-        rating: 4.2,
-        totalTrips: 15,
-        createdAt: "2024-04-10",
-      },
-    ]
-    localStorage.setItem("driverAccounts", JSON.stringify(defaultDrivers))
+export async function getCustomerSession(customerId: string): Promise<Customer | null> {
+  return await getCustomerById(customerId);
+}
+
+export async function registerDriver(driver: Omit<Driver, 'id' | 'rating'>): Promise<{ success: boolean; message: string; driverId?: string }> {
+  return await createDriverAction(driver);
+}
+
+export async function loginDriver(email: string, password: string): Promise<{ success: boolean; message: string; driverId?: string }> {
+  const result = await verifyDriverCredentials(email, password);
+  if (result.success) {
+    return { success: true, message: 'Login successful!', driverId: result.driverId };
   }
-
-  // Initialize orders if none exist
-  const existingOrders = localStorage.getItem("orders")
-  if (!existingOrders) {
-    localStorage.setItem("orders", JSON.stringify([]))
-  }
+  return { success: false, message: result.message || 'Login failed.' };
 }
 
-// --- Customer Functions ---
-
-export const getCustomers = (): Customer[] => {
-  const data = localStorage.getItem("customerAccounts")
-  return data ? JSON.parse(data) : []
+export async function getDriverSession(driverId: string): Promise<Driver | null> {
+  return await getDriverById(driverId);
 }
 
-export const setCustomers = (customers: Customer[]): void => {
-  localStorage.setItem("customerAccounts", JSON.stringify(customers))
+export async function updateDriverRating(driverId: string, rating: number): Promise<boolean> {
+  const result = await updateDriverRatingAction(driverId, rating);
+  return result.success;
 }
 
-export const createCustomer = async (
-  customerData: Omit<Customer, "id" | "passwordHash" | "createdAt"> & { password: string },
-): Promise<Customer> => {
-  const passwordHash = await hashPassword(customerData.password)
-  const newCustomer: Customer = {
-    id: `cust${Date.now()}`,
-    name: customerData.name,
-    email: customerData.email,
-    passwordHash,
-    phone: customerData.phone,
-    address: customerData.address,
-    createdAt: new Date().toISOString().split("T")[0],
-  }
-  const customers = getCustomers()
-  setCustomers([...customers, newCustomer])
-  return newCustomer
+// --- Order Management ---
+
+export async function createNewOrder(order: Omit<Order, 'id' | 'status' | 'driverId' | 'pickupTime' | 'deliveryTime'>): Promise<{ success: boolean; message: string; orderId?: string }> {
+  return await createOrderAction(order);
 }
 
-export const loginCustomer = (sessionData: Omit<CustomerSession, "role">): void => {
-  localStorage.setItem("customerSession", JSON.stringify({ ...sessionData, role: "customer" }))
+export async function getAllOrders(): Promise<Order[]> {
+  return await fetchOrders();
 }
 
-export const getCustomerSession = (): CustomerSession | null => {
-  const session = localStorage.getItem("customerSession")
-  return session ? JSON.parse(session) : null
+export async function getCustomerOrders(customerId: string): Promise<Order[]> {
+  return await fetchOrders({ customerId });
 }
 
-// --- Driver Functions ---
-
-export const getDrivers = (): Driver[] => {
-  const data = localStorage.getItem("driverAccounts")
-  return data ? JSON.parse(data) : []
+export async function getDriverOrders(driverId: string): Promise<Order[]> {
+  return await fetchOrders({ driverId });
 }
 
-export const setDrivers = (drivers: Driver[]): void => {
-  localStorage.setItem("driverAccounts", JSON.stringify(drivers))
+export async function getOrderDetails(orderId: string): Promise<Order | null> {
+  return await fetchOrderById(orderId);
 }
 
-export const createDriver = async (
-  driverData: Omit<Driver, "id" | "passwordHash" | "createdAt" | "rating" | "totalTrips"> & { password: string },
-): Promise<Driver> => {
-  const passwordHash = await hashPassword(driverData.password)
-  const newDriver: Driver = {
-    id: `driver${Date.now()}`,
-    name: driverData.name,
-    email: driverData.email,
-    passwordHash,
-    phone: driverData.phone,
-    vehicleType: driverData.vehicleType,
-    vehicleNumber: driverData.vehicleNumber,
-    licenseNumber: driverData.licenseNumber,
-    rating: 5.0, // Default rating for new drivers
-    totalTrips: 0,
-    createdAt: new Date().toISOString().split("T")[0],
-  }
-  const drivers = getDrivers()
-  setDrivers([...drivers, newDriver])
-  return newDriver
+export async function updateOrderStatus(orderId: string, status: OrderStatus): Promise<boolean> {
+  const result = await updateOrderAction({ id: orderId, status });
+  return result.success;
 }
 
-export const loginDriver = (sessionData: Omit<DriverSession, "role">): void => {
-  localStorage.setItem("driverSession", JSON.stringify({ ...sessionData, role: "driver" }))
+export async function updateOrderDriver(orderId: string, driverId: string): Promise<boolean> {
+  const result = await assignDriverToOrderAction(orderId, driverId);
+  return result.success;
 }
 
-export const getDriverSession = (): DriverSession | null => {
-  const session = localStorage.getItem("driverSession")
-  return session ? JSON.parse(session) : null
+export async function updateOrderPickupTime(orderId: string, time: string): Promise<boolean> {
+  const result = await updateOrderAction({ id: orderId, pickupTime: time });
+  return result.success;
 }
 
-export const updateDriverRating = (driverId: string, newRating: number): void => {
-  const drivers = getDrivers()
-  const driverIndex = drivers.findIndex((d) => d.id === driverId)
-
-  if (driverIndex > -1) {
-    const driver = drivers[driverIndex]
-    // Calculate new average rating
-    const currentTotalRating = driver.rating * driver.totalTrips
-    const updatedTotalTrips = driver.totalTrips + 1
-    const updatedRating = (currentTotalRating + newRating) / updatedTotalTrips
-
-    drivers[driverIndex] = {
-      ...driver,
-      rating: Number.parseFloat(updatedRating.toFixed(1)), // Keep one decimal place
-      totalTrips: updatedTotalTrips,
-    }
-    setDrivers(drivers)
-  }
+export async function updateOrderDeliveryTime(orderId: string, time: string): Promise<boolean> {
+  const result = await updateOrderAction({ id: orderId, deliveryTime: time });
+  return result.success;
 }
 
-// --- Order Functions ---
-
-export const getOrders = (): Order[] => {
-  const data = localStorage.getItem("orders")
-  return data ? JSON.parse(data) : []
+export async function cancelOrder(orderId: string): Promise<boolean> {
+  const result = await cancelOrderAction(orderId);
+  return result.success;
 }
 
-export const setOrders = (orders: Order[]): void => {
-  localStorage.setItem("orders", JSON.stringify(orders))
-}
+// --- Demo Data (for seeding, not direct app use after migration) ---
+// These are kept here for the initial seedDatabase action.
+export const demoAdmins: Omit<Admin, 'id'>[] = [
+  { email: 'admin@deliveriq.com', password: 'admin123', name: 'Admin User', isActive: true },
+];
 
-export const createOrder = (orderData: Omit<Order, "id" | "createdAt" | "status" | "paymentStatus">): Order => {
-  const newOrder: Order = {
-    id: `order${Date.now()}`,
-    createdAt: new Date().toISOString(),
-    status: OrderStatus.pending, // Use enum value
-    paymentStatus: "pending", // Default to pending payment
-    ...orderData,
-  }
-  const orders = getOrders()
-  setOrders([...orders, newOrder])
-  return newOrder
-}
+export const demoCustomers: Omit<Customer, 'id'>[] = [
+  { email: 'customer1@example.com', password: 'password123', name: 'Alice Smith', phone: '555-1111', address: '123 Main St' },
+  { email: 'customer2@example.com', password: 'password123', name: 'Bob Johnson', phone: '555-2222', address: '456 Oak Ave' },
+];
 
-export const updateOrder = (updatedOrder: Order): Order | null => {
-  const orders = getOrders()
-  const index = orders.findIndex((order) => order.id === updatedOrder.id)
-  if (index > -1) {
-    orders[index] = updatedOrder
-    setOrders(orders)
-    return updatedOrder
-  }
-  return null
-}
+export const demoDrivers: Omit<Driver, 'id' | 'rating'>[] = [
+  { email: 'driver1@example.com', password: 'password123', name: 'Charlie Brown', phone: '555-3333', vehicle: 'Motorcycle' },
+  { email: 'driver2@example.com', password: 'password123', name: 'Diana Prince', phone: '555-4444', vehicle: 'Van' },
+];
 
-export const getOrderById = (orderId: string): Order | null => {
-  const orders = getOrders()
-  return orders.find((order) => order.id === orderId) || null
-}
-
-// New function to cancel an order
-export const cancelOrder = (orderId: string): Order | null => {
-  const orders = getOrders()
-  const orderIndex = orders.findIndex((order) => order.id === orderId)
-
-  if (orderIndex > -1) {
-    const orderToCancel = orders[orderIndex]
-    if (orderToCancel.status === OrderStatus.pending) {
-      const updatedOrder = {
-        ...orderToCancel,
-        status: OrderStatus.cancelled,
-        completedAt: new Date().toISOString(), // Mark cancellation time
-      }
-      orders[orderIndex] = updatedOrder
-      setOrders(orders)
-      return updatedOrder
-    }
-  }
-  return null
-}
-
-// New helper to get any active session
-export const getCurrentUserSession = (): CustomerSession | DriverSession | null => {
-  const customerSession = getCustomerSession()
-  if (customerSession) {
-    return { ...customerSession, role: "customer" }
-  }
-  const driverSession = getDriverSession()
-  if (driverSession) {
-    return { ...driverSession, role: "driver" }
-  }
-  return null
-}
+export const demoOrders: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>[] = [
+  {
+    customerId: 'customer1_id_placeholder', // Will be replaced by actual MongoDB IDs during seeding
+    pickupLocation: '123 Main St, Anytown',
+    deliveryLocation: '789 Pine Ln, Anytown',
+    itemDescription: 'Documents',
+    weight: 0.5,
+    dimensions: '10x10x5 cm',
+    deliveryType: DeliveryType.Standard,
+    paymentMethod: PaymentMethod.CreditCard,
+    price: 15.00,
+    status: OrderStatus.Pending,
+    driverId: null,
+    pickupTime: null,
+    deliveryTime: null,
+  },
+  {
+    customerId: 'customer2_id_placeholder',
+    pickupLocation: '456 Oak Ave, Anytown',
+    deliveryLocation: '101 Elm St, Anytown',
+    itemDescription: 'Electronics',
+    weight: 2.0,
+    dimensions: '20x15x10 cm',
+    deliveryType: DeliveryType.Express,
+    paymentMethod: PaymentMethod.PayPal,
+    price: 30.00,
+    status: OrderStatus.Assigned,
+    driverId: 'driver1_id_placeholder',
+    pickupTime: '2024-08-07T10:00:00Z',
+    deliveryTime: null,
+  },
+];

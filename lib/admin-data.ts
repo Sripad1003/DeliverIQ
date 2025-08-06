@@ -1,86 +1,40 @@
-import { hashPassword, hashSecurityKey } from "./security"
+import { Admin } from './app-data';
+import {
+  getAdmins as fetchAdmins,
+  updateAdminStatus as updateAdminStatusAction,
+  deleteAdmin as deleteAdminAction,
+  getAdminSecurityKeyHash,
+  setAdminSecurityKey as setAdminSecurityKeyAction,
+  verifyAdminSecurityKey as verifyAdminSecurityKeyAction,
+} from '@/actions/admin-actions';
 
-export interface Admin {
-  id: string
-  name: string
-  email: string
-  passwordHash: string // Store hashed password instead of plain text
-  createdAt: string
-  createdBy: string
-  status: "active" | "suspended"
+export async function getAdminSecurityKey(): Promise<string | null> {
+  // This function is primarily for checking if a key exists or for initial setup.
+  // The actual key value is not returned for security.
+  const hash = await getAdminSecurityKeyHash();
+  return hash ? 'KEY_SET' : null; // Return a placeholder if set, null otherwise
 }
 
-export const initializeAdminData = async () => {
-  // Initialize default admin if no admin data exists
-  const existingAdmins = localStorage.getItem("adminAccounts")
-  if (!existingAdmins) {
-    const defaultPasswordHash = await hashPassword("admin123") // Default password
-    const defaultAdmin: Admin = {
-      id: "1",
-      name: "Super Admin",
-      email: "admin@deliveriq.com",
-      passwordHash: defaultPasswordHash,
-      createdAt: "2024-01-01",
-      createdBy: "System",
-      status: "active",
-    }
-    localStorage.setItem("adminAccounts", JSON.stringify([defaultAdmin]))
-  }
-
-  // Initialize default security key if none exists
-  const existingKey = localStorage.getItem("adminSecurityKey")
-  if (!existingKey) {
-    const defaultKeyHash = await hashSecurityKey("DELIVERIQ_ADMIN_2024")
-    localStorage.setItem("adminSecurityKey", defaultKeyHash)
-    // Store the plain key temporarily for initial setup (remove in production)
-    localStorage.setItem("adminSecurityKeyPlain", "DELIVERIQ_ADMIN_2024")
-  }
+export async function setSecurityKey(key: string): Promise<boolean> {
+  const result = await setAdminSecurityKeyAction(key);
+  return result.success;
 }
 
-export const getAdminData = (): Admin[] => {
-  const data = localStorage.getItem("adminAccounts")
-  if (data) {
-    try {
-      return JSON.parse(data)
-    } catch (error) {
-      console.error("Error parsing admin data:", error)
-      return []
-    }
-  }
-  return []
+export async function verifySecurityKey(key: string): Promise<boolean> {
+  const result = await verifyAdminSecurityKeyAction(key);
+  return result.success;
 }
 
-export const getSecurityKeyHash = (): string => {
-  return localStorage.getItem("adminSecurityKey") || ""
+export async function getAdmins(): Promise<Admin[]> {
+  return await fetchAdmins();
 }
 
-export const getSecurityKeyPlain = (): string => {
-  // This is for display purposes only - remove in production
-  return localStorage.getItem("adminSecurityKeyPlain") || "DELIVERIQ_ADMIN_2024"
+export async function updateAdminStatus(adminId: string, isActive: boolean): Promise<boolean> {
+  const result = await updateAdminStatusAction(adminId, isActive);
+  return result.success;
 }
 
-export const setSecurityKey = async (key: string): Promise<void> => {
-  const hashedKey = await hashSecurityKey(key)
-  localStorage.setItem("adminSecurityKey", hashedKey)
-  localStorage.setItem("adminSecurityKeyPlain", key) // For display - remove in production
-}
-
-export const setAdminData = (admins: Admin[]): void => {
-  localStorage.setItem("adminAccounts", JSON.stringify(admins))
-}
-
-export const createAdmin = async (
-  adminData: Omit<Admin, "id" | "passwordHash" | "createdAt" | "createdBy" | "status"> & { password: string },
-): Promise<Admin> => {
-  const passwordHash = await hashPassword(adminData.password)
-
-  return {
-    id: Date.now().toString(),
-    name: adminData.name,
-    email: adminData.email,
-    passwordHash,
-    createdAt: new Date().toISOString().split("T")[0],
-    createdBy: "Super Admin", // In real app, get from current admin session
-    status: "active",
-  }
+export async function deleteAdmin(adminId: string): Promise<boolean> {
+  const result = await deleteAdminAction(adminId);
+  return result.success;
 }

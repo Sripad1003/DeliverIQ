@@ -1,33 +1,22 @@
-import Link from "next/link"
-import { ArrowLeft, Truck } from "lucide-react"
-import type React from "react"
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { ArrowLeftIcon } from 'lucide-react'
 
 interface PageHeaderWithBackProps {
-  title: string
-  backLink: string
-  icon?: React.ElementType
-  description?: string
-  iconColorClass?: string
+  title: string;
+  backHref: string;
 }
 
-export function PageHeaderWithBack({
-  title,
-  backLink,
-  icon: Icon,
-  description,
-  iconColorClass = "text-blue-600",
-}: PageHeaderWithBackProps) {
+export function PageHeaderWithBack({ title, backHref }: PageHeaderWithBackProps) {
   return (
-    <div className="text-center mb-8">
-      <Link href={backLink} className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4">
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Home
+    <header className="flex h-14 items-center gap-4 border-b bg-gray-100/40 px-6 dark:bg-gray-800/40 lg:h-[60px]">
+      <Link href={backHref}>
+        <Button variant="ghost" size="icon">
+          <ArrowLeftIcon className="h-5 w-5" />
+          <span className="sr-only">Back</span>
+        </Button>
       </Link>
-      <div className="flex items-center justify-center space-x-2 mb-4">
-        {Icon ? <Icon className={`h-8 w-8 ${iconColorClass}`} /> : <Truck className="h-8 w-8 text-blue-600" />}
-        <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-      </div>
-      {description && <p className="text-gray-600">{description}</p>}
-    </div>
+      <h1 className="flex-1 text-lg font-semibold">{title}</h1>
+    </header>
   )
 }

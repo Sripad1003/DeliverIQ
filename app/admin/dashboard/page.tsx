@@ -1,285 +1,294 @@
-"use client"
+'use client'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Users, Truck, Package, TrendingUp, AlertCircle, CheckCircle, Shield, Key } from "lucide-react"
-import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
-import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
-import { DashboardHeader } from "@/components/layout/dashboard-header" // Import DashboardHeader
-import { getCustomers, getDrivers, getOrders, OrderStatus } from "@/lib/app-data"
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { DashboardHeader } from '@/components/layout/dashboard-header'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { StatusAlert } from '@/components/ui/status-alert'
+import {
+  getAllOrders,
+  updateOrderDriver,
+  updateOrderStatus,
+  Order,
+  OrderStatus,
+  Driver,
+} from '@/lib/app-data'
+import { getAdmins } from '@/actions/admin-actions'
+import { getDriverById } from '@/actions/user-actions'
+import { toast } from 'sonner'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-// Helper for comparing arrays of objects by their stringified content
-const areArraysOfObjectsEqual = (arr1: any[], arr2: any[]) => {
-  if (arr1.length !== arr2.length) return false
-  for (let i = 0; i < arr1.length; i++) {
-    if (JSON.stringify(arr1[i]) !== JSON.stringify(arr2[i])) {
-      return false
-    }
-  }
-  return true
-}
-
-export default function AdminDashboard() {
+export default function AdminDashboardPage() {
+  const [adminName, setAdminName] = useState('Admin')
+  const [orders, setOrders] = useState<Order[]>([])
+  const [drivers, setDrivers] = useState<Driver[]>([])
+  const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const [showAccessDenied, setShowAccessDenied] = useState(false)
-
-  // State for dynamic data
-  const [totalUsers, setTotalUsers] = useState(0)
-  const [activeDrivers, setActiveDrivers] = useState(0)
-  const [todaysOrders, setTodaysOrders] = useState(0)
-  const [totalRevenue, setTotalRevenue] = useState(0)
-  const [recentRegistrations, setRecentRegistrations] = useState<
-    { name: string; role: string; location?: string; vehicleType?: string; status?: string }[]
-  >([])
 
   useEffect(() => {
-    if (searchParams.get("accessDenied") === "true") {
-      setShowAccessDenied(true)
-      // Clear the query param after showing the message
-      const newUrl = new URL(window.location.href)
-      newUrl.searchParams.delete("accessDenied")
-      router.replace(newUrl.pathname + newUrl.search, undefined)
+    const currentAdminId = localStorage.getItem('currentAdminId');
+    if (!currentAdminId) {
+      router.push('/admin/login');
+      return;
     }
 
-    // Fetch and calculate dynamic data
-    const customers = getCustomers()
-    const drivers = getDrivers()
-    const orders = getOrders()
-
-    // Calculate Total Users
-    setTotalUsers(customers.length + drivers.length)
-
-    // Calculate Active Drivers (drivers with accepted or in-transit orders)
-    const driversWithActiveOrders = new Set(
-      orders
-        .filter(
-          (order) =>
-            order.driverId && (order.status === OrderStatus.accepted || order.status === OrderStatus.inTransit),
-        )
-        .map((order) => order.driverId),
-    )
-    setActiveDrivers(driversWithActiveOrders.size)
-
-    // Calculate Today's Orders
-    const today = new Date().toISOString().split("T")[0]
-    const ordersToday = orders.filter((order) => order.createdAt.split("T")[0] === today)
-    setTodaysOrders(ordersToday.length)
-
-    // Calculate Total Revenue (from completed and paid orders)
-    const revenue = orders.reduce((sum, order) => {
-      if (order.status === OrderStatus.completed && order.paymentStatus === "paid") {
-        return sum + order.price
+    const fetchAdminData = async () => {
+      setLoading(true);
+      const fetchedAdmins = await getAdmins();
+      const currentAdmin = fetchedAdmins.find(admin => admin.id === currentAdminId);
+      if (currentAdmin) {
+        setAdminName(currentAdmin.name);
+      } else {
+        toast.error('Admin data not found. Please log in again.');
+        localStorage.removeItem('currentAdminId');
+        router.push('/admin/login');
+        return;
       }
-      return sum
-    }, 0)
-    setTotalRevenue(revenue)
 
-    // Get Recent User Registrations (last 5, combining customers and drivers)
-    const allUsers = [
-      ...customers.map((c) => ({
-        name: c.name,
-        role: "Customer",
-        location: c.address.split(",").pop()?.trim(),
-        createdAt: c.createdAt,
-        status: "Verified", // Assuming all initial customers are verified
-      })),
-      ...drivers.map((d) => ({
-        name: d.name,
-        role: "Driver",
-        vehicleType: d.vehicleType.charAt(0).toUpperCase() + d.vehicleType.slice(1),
-        location: "N/A", // Driver location not stored in app-data, can be added if needed
-        createdAt: d.createdAt,
-        status: "Verified", // Assuming all initial drivers are verified
-      })),
-    ]
-    const sortedRecentRegistrations = allUsers
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5) // Get top 5 recent registrations
+      const fetchedOrders = await getAllOrders();
+      setOrders(fetchedOrders);
 
-    // Only update state if the content of the array has actually changed
-    if (!areArraysOfObjectsEqual(recentRegistrations, sortedRecentRegistrations)) {
-      setRecentRegistrations(sortedRecentRegistrations as any)
+      // Fetch all drivers to populate the dropdown
+      const allDrivers = await Promise.all(
+        fetchedOrders.map(async (order) => {
+          if (order.driverId) {
+            const driver = await getDriverById(order.driverId);
+            return driver;
+          }
+          return null;
+        })
+      );
+      // Filter out nulls and ensure unique drivers
+      const uniqueDrivers = Array.from(new Map(allDrivers.filter(d => d !== null).map(d => [d!.id, d!])).values());
+      setDrivers(uniqueDrivers as Driver[]);
+
+      setLoading(false);
+    };
+
+    fetchAdminData();
+  }, [router]);
+
+  const handleAssignDriver = async (orderId: string, driverId: string) => {
+    setLoading(true);
+    const result = await updateOrderDriver(orderId, driverId);
+    if (result) {
+      toast.success('Driver assigned successfully!');
+      // Refresh orders
+      const updatedOrders = await getAllOrders();
+      setOrders(updatedOrders);
+    } else {
+      toast.error('Failed to assign driver.');
     }
-  }, [searchParams, router]) // Removed recentRegistrations from dependencies
+    setLoading(false);
+  };
+
+  const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
+    setLoading(true);
+    const result = await updateOrderStatus(orderId, newStatus);
+    if (result) {
+      toast.success(`Order status updated to ${newStatus}.`);
+      // Refresh orders
+      const updatedOrders = await getAllOrders();
+      setOrders(updatedOrders);
+    } else {
+      toast.error('Failed to update order status.');
+    }
+    setLoading(false);
+  };
 
   const handleLogout = () => {
-    localStorage.removeItem("adminSession")
-    window.location.href = "/"
+    localStorage.removeItem('currentAdminId');
+    toast.info('Logged out successfully.');
+    router.push('/admin/login');
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center">
+        <p>Loading dashboard...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardHeader title="Admin Dashboard" onLogout={handleLogout} />
-
-      <main className="container mx-auto px-4 py-8">
-        <StatusAlert
-          message={
-            showAccessDenied
-              ? { type: "error", text: "Access Denied: Only the Super Admin can access the Security Setup page." }
-              : { type: "", text: "" }
-          }
-        />
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="flex min-h-screen w-full flex-col">
+      <DashboardHeader title={`Welcome, ${adminName}!`} onLogout={handleLogout} />
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-blue-600" />
-                Total Users
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+              <Package2Icon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{totalUsers}</p>
-              <p className="text-sm text-gray-600">Customers & Drivers</p>
+              <div className="text-2xl font-bold">{orders.length}</div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">All transport requests</p>
             </CardContent>
           </Card>
-
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Truck className="h-5 w-5 text-green-600" />
-                Active Drivers
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
+              <ClockIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{activeDrivers}</p>
-              <p className="text-sm text-gray-600">Drivers on active trips</p>
+              <div className="text-2xl font-bold">
+                {orders.filter((order) => order.status === OrderStatus.Pending).length}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Orders awaiting assignment</p>
             </CardContent>
           </Card>
-
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5 text-purple-600" />
-                Today's Orders
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Assigned Orders</CardTitle>
+              <TruckIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{todaysOrders}</p>
-              <p className="text-sm text-gray-600">Orders created today</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-orange-600" />
-                Revenue
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">₹{totalRevenue.toFixed(2)}</p>
-              <p className="text-sm text-gray-600">From completed & paid orders</p>
+              <div className="text-2xl font-bold">
+                {orders.filter((order) => order.status === OrderStatus.Assigned || order.status === OrderStatus.PickedUp).length}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Orders currently in progress</p>
             </CardContent>
           </Card>
         </div>
-
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent User Registrations</CardTitle>
-              <CardDescription>Latest users who joined the platform</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {recentRegistrations.length > 0 ? (
-                  recentRegistrations.map((user, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div>
-                        <p className="font-semibold">{user.name}</p>
-                        <p className="text-sm text-gray-600">
-                          {user.role} • {user.role === "Driver" && user.vehicleType ? `${user.vehicleType} • ` : ""}
-                          {user.location}
-                        </p>
-                      </div>
-                      <Badge variant="secondary">{user.status}</Badge>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-center">No recent registrations.</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>System Alerts</CardTitle>
-              <CardDescription>Issues requiring attention</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <AlertCircle className="h-5 w-5 text-red-500" />
-                  <div>
-                    <p className="font-semibold">Payment Failed</p>
-                    <p className="text-sm text-gray-600">Order #1234 payment issue</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <AlertCircle className="h-5 w-5 text-yellow-500" />
-                  <div>
-                    <p className="font-semibold">Driver Verification</p>
-                    <p className="text-sm text-gray-600">3 drivers pending verification</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <div>
-                    <p className="font-semibold">System Update</p>
-                    <p className="text-sm text-gray-600">Successfully deployed v2.1</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">All Orders</h2>
+          <Link href="/admin/manage-admins">
+            <Button variant="outline">Manage Admins</Button>
+          </Link>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Platform Management</CardTitle>
-            <CardDescription>Quick actions and controls</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-5 gap-4">
-              <Button className="h-20 flex flex-col">
-                <Users className="h-6 w-6 mb-2" />
-                Manage Users
-              </Button>
-              <Button variant="outline" className="h-20 flex flex-col bg-transparent">
-                <Truck className="h-6 w-6 mb-2" />
-                Driver Verification
-              </Button>
-              <Button variant="outline" className="h-20 flex flex-col bg-transparent">
-                <Package className="h-6 w-6 mb-2" />
-                Order Management
-              </Button>
-              <Link href="/admin/manage-admins">
-                <Button variant="outline" className="h-20 flex flex-col bg-transparent w-full">
-                  <Shield className="h-6 w-6 mb-2" />
-                  Admin Management
-                </Button>
-              </Link>
-              <Link href="/admin/setup">
-                <Button
-                  variant="outline"
-                  className="h-20 flex flex-col bg-transparent w-full border-red-200 hover:bg-red-50"
-                >
-                  <Key className="h-6 w-6 mb-2 text-red-600" />
-                  Security Setup
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-        <p className="text-center text-gray-500 text-sm mt-4">
-          © {new Date().getFullYear()} DeliverIQ. All rights reserved.
-        </p>
+        <div className="grid gap-4">
+          {orders.length === 0 ? (
+            <p>No orders found.</p>
+          ) : (
+            orders.map((order) => (
+              <Card key={order.id}>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Order #{order.id.substring(0, 8)}</CardTitle>
+                  <StatusAlert status={order.status} />
+                </CardHeader>
+                <CardContent className="grid gap-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Customer:</p>
+                    <p className="text-sm font-medium">{order.customerName}</p>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Pickup:</p>
+                    <p className="text-sm font-medium">{order.pickupLocation}</p>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Delivery:</p>
+                    <p className="text-sm font-medium">{order.deliveryLocation}</p>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Driver:</p>
+                    <p className="text-sm font-medium">{order.driverName}</p>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    {order.status === OrderStatus.Pending && (
+                      <Select onValueChange={(value) => handleAssignDriver(order.id, value)}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Assign Driver" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {drivers.length === 0 ? (
+                            <SelectItem value="no-drivers" disabled>No drivers available</SelectItem>
+                          ) : (
+                            drivers.map((driver) => (
+                              <SelectItem key={driver.id} value={driver.id}>
+                                {driver.name} ({driver.vehicle})
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    {order.status === OrderStatus.Assigned && (
+                      <Button size="sm" onClick={() => handleUpdateStatus(order.id, OrderStatus.PickedUp)} disabled={loading}>
+                        {loading ? 'Updating...' : 'Mark as Picked Up'}
+                      </Button>
+                    )}
+                    {order.status === OrderStatus.PickedUp && (
+                      <Button size="sm" onClick={() => handleUpdateStatus(order.id, OrderStatus.Delivered)} disabled={loading}>
+                        {loading ? 'Updating...' : 'Mark as Delivered'}
+                      </Button>
+                    )}
+                    {(order.status === OrderStatus.Delivered || order.status === OrderStatus.Cancelled) && (
+                      <Button size="sm" variant="outline" disabled>
+                        {order.status}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       </main>
     </div>
+  )
+}
+
+function Package2Icon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z" />
+      <path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.79 1.1L21 9" />
+      <path d="M12 3v6" />
+    </svg>
+  )
+}
+
+function ClockIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  )
+}
+
+function TruckIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
+      <path d="M15 18H9" />
+      <path d="M19 18h2a1 1 0 0 0 1-1v-3.61a1 1 0 0 0-.88-.91l-7.35-1.62A2 2 0 0 0 13 9.28V8.5a.5.5 0 0 1 .5-.5H22a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.5" />
+      <circle cx="7" cy="18" r="2" />
+      <circle cx="17" cy="18" r="2" />
+    </svg>
   )
 }

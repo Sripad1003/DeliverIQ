@@ -1,26 +1,31 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import type React from "react"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import Link from 'next/link'
 
 interface AuthCardProps {
-  title: string
-  description?: string
-  children: React.ReactNode
-  icon?: React.ElementType
-  iconColorClass?: string
-  titleColorClass?: string
+  title: string;
+  description: string;
+  children: React.ReactNode;
+  footerText: string;
+  footerLinkText: string;
+  footerLinkHref: string;
 }
 
-export function AuthCard({ title, description, children, icon: Icon, iconColorClass, titleColorClass }: AuthCardProps) {
+export function AuthCard({ title, description, children, footerText, footerLinkText, footerLinkHref }: AuthCardProps) {
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className={`text-2xl text-center flex items-center justify-center gap-2 ${titleColorClass}`}>
-          {Icon && <Icon className={`h-6 w-6 ${iconColorClass}`} />}
-          <span>{title}</span>
-        </CardTitle>
-        {description && <CardDescription className="text-center">{description}</CardDescription>}
+    <Card className="w-full max-w-md">
+      <CardHeader className="space-y-1 text-center">
+        <CardTitle className="text-2xl font-bold">{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>{children}</CardContent>
+      <CardFooter className="flex flex-col gap-2 text-sm">
+        <p className="text-center text-gray-500 dark:text-gray-400">
+          {footerText}{' '}
+          <Link className="font-medium underline" href={footerLinkHref}>
+            {footerLinkText}
+          </Link>
+        </p>
+      </CardFooter>
     </Card>
   )
 }

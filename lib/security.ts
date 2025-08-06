@@ -1,17 +1,16 @@
+import bcrypt from 'bcryptjs';
+
+const SALT_ROUNDS = 10;
+
 // Simple hash function for demo purposes
 // In production, use bcrypt or similar secure hashing libraries
 export const hashPassword = async (password: string): Promise<string> => {
-  // Using Web Crypto API for hashing
-  const encoder = new TextEncoder()
-  const data = encoder.encode(password + "DELIVERIQ_SALT_2024") // Add salt
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
+  const salt = await bcrypt.genSalt(SALT_ROUNDS);
+  return bcrypt.hash(password, salt);
 }
 
 export const verifyPassword = async (password: string, hashedPassword: string): Promise<boolean> => {
-  const hashedInput = await hashPassword(password)
-  return hashedInput === hashedPassword
+  return bcrypt.compare(password, hashedPassword);
 }
 
 export const hashSecurityKey = async (key: string): Promise<string> => {

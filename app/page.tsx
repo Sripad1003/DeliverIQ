@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Truck, Users, Shield, Star, Clock, MapPin } from "lucide-react"
+import { Truck, Users, Shield, Star, Clock, MapPin } from 'lucide-react'
 
 export default function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -82,6 +82,9 @@ export default function HomePage() {
                 </Link>
                 <Link href="/signup">
                   <Button>Sign Up</Button>
+                </Link>
+                <Link href="/admin/login">
+                  <Button variant="ghost">Admin Login</Button>
                 </Link>
               </>
             )}

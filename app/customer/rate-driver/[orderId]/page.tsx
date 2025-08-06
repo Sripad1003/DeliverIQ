@@ -1,144 +1,155 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
-import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Star } from "lucide-react"
-import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
-import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
-import { getOrderById, updateOrder, updateDriverRating, getCustomerSession, type Order } from "@/lib/app-data"
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { PageHeaderWithBack } from '@/components/layout/page-header-with-back'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Button } from '@/components/ui/button'
+import { getOrderDetails, updateDriverRating } from '@/lib/app-data'
+import { toast } from 'sonner'
 
-export default function RateDriverPage() {
-  const router = useRouter()
-  const params = useParams()
-  const orderId = params.orderId as string
-  const [order, setOrder] = useState<Order | null>(null)
+export default function RateDriverPage({ params }: { params: { orderId: string } }) {
+  const { orderId } = params
   const [rating, setRating] = useState(0)
-  const [hoverRating, setHoverRating] = useState(0)
-  const [comment, setComment] = useState("")
-  const [message, setMessage] = useState({ type: "", text: "" })
+  const [comment, setComment] = useState('')
+  const [order, setOrder] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
-    const session = getCustomerSession()
-    if (!session) {
-      router.push("/login")
-      return
+    const currentUserId = localStorage.getItem('currentUserId');
+    const currentUserType = localStorage.getItem('currentUserType');
+
+    if (!currentUserId || currentUserType !== 'customer') {
+      router.push('/login');
+      return;
     }
 
-    const fetchedOrder = getOrderById(orderId)
-    if (fetchedOrder && fetchedOrder.customerId === session.id && fetchedOrder.status === "completed") {
-      setOrder(fetchedOrder)
-      if (fetchedOrder.rating) {
-        setRating(fetchedOrder.rating)
+    const fetchOrder = async () => {
+      setLoading(true);
+      const fetchedOrder = await getOrderDetails(orderId);
+      if (fetchedOrder && fetchedOrder.customerId === currentUserId) {
+        setOrder(fetchedOrder);
+      } else {
+        toast.error('Order not found or you do not have permission to view it.');
+        router.push('/customer/dashboard');
       }
-    } else {
-      setMessage({ type: "error", text: "Order not found, not completed, or you do not have permission to rate it." })
-    }
-    setLoading(false)
-  }, [orderId, router])
+      setLoading(false);
+    };
 
-  const handleRatingSubmit = () => {
-    setMessage({ type: "", text: "" })
+    fetchOrder();
+  }, [orderId, router]);
+
+  const handleRatingChange = (newRating: number) => {
+    setRating(newRating)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     if (!order || !order.driverId) {
-      setMessage({ type: "error", text: "Cannot rate this order. Driver information is missing." })
-      return
+      toast.error('Cannot rate: Driver not assigned or order not found.');
+      return;
     }
     if (rating === 0) {
-      setMessage({ type: "error", text: "Please select a star rating." })
-      return
+      toast.error('Please select a rating.');
+      return;
     }
-
-    try {
-      // Update order with rating
-      const updatedOrder = { ...order, rating: rating }
-      updateOrder(updatedOrder)
-
-      // Update driver's average rating
-      updateDriverRating(order.driverId, rating)
-
-      setMessage({ type: "success", text: "Thank you for your feedback! Rating submitted successfully." })
-      setTimeout(() => router.push("/customer/dashboard"), 2000)
-    } catch (error) {
-      console.error("Failed to submit rating:", error)
-      setMessage({ type: "error", text: "Failed to submit rating. Please try again." })
+    setLoading(true);
+    const result = await updateDriverRating(order.driverId, rating);
+    if (result) {
+      toast.success('Driver rated successfully!');
+      router.push('/customer/dashboard');
+    } else {
+      toast.error('Failed to submit rating.');
     }
+    setLoading(false);
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading rating page...</p>
+      <div className="flex min-h-screen flex-col items-center justify-center">
+        <p>Loading order details...</p>
       </div>
-    )
+    );
   }
 
   if (!order) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <StatusAlert message={message} />
-        <p className="text-gray-600 text-lg mb-4">Could not load order for rating.</p>
-        <Link href="/customer/dashboard">
-          <Button>Go to Dashboard</Button>
-        </Link>
-      </div>
-    )
+    return null; // Should redirect by now
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col items-center p-4">
-      <div className="w-full max-w-md">
-        <PageHeaderWithBack
-          title="Rate Your Trip"
-          description={`Order ID: ${order.id}`}
-          backLink="/customer/dashboard"
-          icon={Star}
-          iconColorClass="text-yellow-500"
-        />
-
-        <StatusAlert message={message} />
-
+    <div className="flex min-h-screen w-full flex-col">
+      <PageHeaderWithBack title="Rate Your Driver" backHref={`/customer/track-order/${orderId}`} />
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">How was your experience?</CardTitle>
-            <CardDescription className="text-center">
-              Please rate your driver for the delivery from {order.pickupLocation} to {order.deliveryLocation}.
-            </CardDescription>
+            <CardTitle>Order #{order.id.substring(0, 8)}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex justify-center gap-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Star
-                  key={star}
-                  className={`h-10 w-10 cursor-pointer transition-colors ${
-                    (hoverRating || rating) >= star ? "text-yellow-500 fill-yellow-500" : "text-gray-300"
-                  }`}
-                  onClick={() => setRating(star)}
-                  onMouseEnter={() => setHoverRating(star)}
-                  onMouseLeave={() => setHoverRating(0)}
+          <CardContent className="grid gap-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Driver:</p>
+              <p className="text-sm font-medium">{order.driverName || 'N/A'}</p>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Pickup:</p>
+              <p className="text-sm font-medium">{order.pickupLocation}</p>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Delivery:</p>
+              <p className="text-sm font-medium">{order.deliveryLocation}</p>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="rating">Rating</Label>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <StarIcon
+                      key={star}
+                      className={`h-8 w-8 cursor-pointer ${
+                        star <= rating ? 'fill-yellow-400 text-yellow-400' : 'fill-gray-300 text-gray-300'
+                      }`}
+                      onClick={() => handleRatingChange(star)}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="comment">Comment (Optional)</Label>
+                <Textarea
+                  id="comment"
+                  placeholder="Share your experience with the driver"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
                 />
-              ))}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="comment">Additional Comments (Optional)</Label>
-              <Textarea
-                id="comment"
-                placeholder="Share your feedback..."
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                rows={4}
-              />
-            </div>
-            <Button onClick={handleRatingSubmit} className="w-full">
-              Submit Rating
-            </Button>
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Submitting...' : 'Submit Rating'}
+              </Button>
+            </form>
           </CardContent>
         </Card>
-      </div>
+      </main>
     </div>
+  )
+}
+
+function StarIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
   )
 }

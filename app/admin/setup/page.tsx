@@ -1,215 +1,135 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Shield, Key, Copy, RefreshCw } from "lucide-react"
-import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
-import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
-import { initializeAdminData, getSecurityKeyPlain, setSecurityKey } from "@/lib/admin-data"
-import { generateSecureKey } from "@/lib/security" // Add this import
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { AuthCard } from '@/components/auth/auth-card'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { createAdmin, setAdminSecurityKey, getAdminSecurityKeyHash } from '@/actions/admin-actions'
+import { toast } from 'sonner'
 
 export default function AdminSetupPage() {
-  const [currentKey, setCurrentKey] = useState("DELIVERIQ_ADMIN_2024")
-  const [newKey, setNewKey] = useState("")
-  const [confirmKey, setConfirmKey] = useState("")
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [message, setMessage] = useState({ type: "", text: "" })
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [securityKey, setSecurityKey] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [isKeySet, setIsKeySet] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
-    initializeAdminData()
-    const savedKey = getSecurityKeyPlain() // Get plain key for display
-    setCurrentKey(savedKey)
-  }, [])
+    const checkSecurityKey = async () => {
+      const hash = await getAdminSecurityKeyHash();
+      setIsKeySet(!!hash);
+    };
+    checkSecurityKey();
+  }, []);
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    setMessage({ type: "success", text: "Key copied to clipboard!" })
-    setTimeout(() => setMessage({ type: "", text: "" }), 3000)
-  }
+  const handleSetup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
 
-  const updateSecurityKey = async () => {
-    if (newKey !== confirmKey) {
-      setMessage({ type: "error", text: "Keys don't match!" })
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match.')
+      setLoading(false)
       return
     }
 
-    if (newKey.length < 16) {
-      setMessage({ type: "error", text: "Security key must be at least 16 characters long!" })
-      return
+    // First, set the security key if it's not already set or if it's being updated
+    if (!isKeySet || securityKey) { // Only attempt to set if not set, or if user provided a new key
+      const keyResult = await setAdminSecurityKey(securityKey);
+      if (!keyResult.success) {
+        toast.error(keyResult.message || 'Failed to set admin security key.');
+        setLoading(false);
+        return;
+      }
+      setIsKeySet(true); // Mark key as set
     }
 
-    try {
-      // Hash and persist the new key
-      await setSecurityKey(newKey)
-
-      setCurrentKey(newKey)
-      setNewKey("")
-      setConfirmKey("")
-      setMessage({
-        type: "success",
-        text: "Security key updated and encrypted successfully! Make sure to share this with authorized admins.",
-      })
-    } catch (error) {
-      setMessage({ type: "error", text: "Failed to update security key" })
+    // Then, create the admin account
+    const adminResult = await createAdmin({ name, email, password, isActive: true });
+    if (adminResult.success) {
+      toast.success('Admin account and security key set up successfully!');
+      router.push('/admin/login');
+    } else {
+      toast.error(adminResult.message || 'Failed to create admin account.');
     }
+    setLoading(false);
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="container mx-auto max-w-4xl">
-        <PageHeaderWithBack
-          title="Admin Security Setup"
-          description="Manage admin security keys and access credentials"
-          backLink="/admin/dashboard"
-          icon={Shield}
-          iconColorClass="text-red-600"
-        />
-
-        <StatusAlert message={message} />
-
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Current Security Key */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Key className="h-5 w-5 text-blue-600" />
-                Current Security Key
-              </CardTitle>
-              <CardDescription>This is the current admin security key required for admin login</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-4 bg-gray-100 rounded-lg font-mono text-sm break-all">{currentKey}</div>
-              <Button onClick={() => copyToClipboard(currentKey)} variant="outline" className="w-full">
-                <Copy className="h-4 w-4 mr-2" />
-                Copy Current Key
-              </Button>
-
-              <StatusAlert
-                message={{
-                  type: "warning",
-                  text: "Important: Keep this key secure and only share with authorized administrators.",
-                }}
-                className="border-yellow-200 bg-yellow-50 text-yellow-800"
-              />
-            </CardContent>
-          </Card>
-
-          {/* Generate New Key */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <RefreshCw className="h-5 w-5 text-green-600" />
-                Generate New Security Key
-              </CardTitle>
-              <CardDescription>Create a new secure key to replace the current one</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Button
-                onClick={() => {
-                  // Wrap in an arrow function to prevent direct execution
-                  setIsGenerating(true)
-                  const newSecureKey = generateSecureKey() // Call the imported function
-                  setNewKey(newSecureKey)
-                  setIsGenerating(false)
-                }}
-                disabled={isGenerating}
-                className="w-full"
-              >
-                {isGenerating ? "Generating..." : "Generate Secure Key"}
-              </Button>
-
-              {newKey && (
-                <>
-                  <div className="space-y-2">
-                    <Label>New Security Key</Label>
-                    <div className="p-4 bg-green-50 rounded-lg font-mono text-sm break-all border border-green-200">
-                      {newKey}
-                    </div>
-                    <Button onClick={() => copyToClipboard(newKey)} variant="outline" size="sm">
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy New Key
-                    </Button>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmKey">Confirm New Key</Label>
-                    <Input
-                      id="confirmKey"
-                      type="password"
-                      placeholder="Paste the new key to confirm"
-                      value={confirmKey}
-                      onChange={(e) => setConfirmKey(e.target.value)}
-                    />
-                  </div>
-
-                  <Button onClick={updateSecurityKey} className="w-full bg-green-600 hover:bg-green-700">
-                    Update Security Key
-                  </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Security Guidelines */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Security Guidelines</CardTitle>
-            <CardDescription>Best practices for admin security key management</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-semibold text-green-700 mb-2">✅ Do:</h4>
-                <ul className="space-y-1 text-sm text-gray-600">
-                  <li>• Store the key in a secure password manager</li>
-                  <li>• Share only with verified administrators</li>
-                  <li>• Change the key regularly (monthly/quarterly)</li>
-                  <li>• Use secure communication channels to share</li>
-                  <li>• Keep a backup of the key in a secure location</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold text-red-700 mb-2">❌ Don't:</h4>
-                <ul className="space-y-1 text-sm text-gray-600">
-                  <li>• Share the key via email or chat</li>
-                  <li>• Store the key in plain text files</li>
-                  <li>• Use the same key for extended periods</li>
-                  <li>• Share with unauthorized personnel</li>
-                  <li>• Write the key on physical notes</li>
-                </ul>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Admin Credentials Reference */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Admin Login Credentials</CardTitle>
-            <CardDescription>Complete credentials needed for admin access</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="p-4 border rounded-lg">
-                <h4 className="font-semibold mb-2">Admin Email</h4>
-                <p className="font-mono text-sm bg-gray-100 p-2 rounded">admin@deliveriq.com</p>
-              </div>
-              <div className="p-4 border rounded-lg">
-                <h4 className="font-semibold mb-2">Password</h4>
-                <p className="text-sm text-gray-600">Set by individual admin</p>
-              </div>
-              <div className="p-4 border rounded-lg">
-                <h4 className="font-semibold mb-2">Security Key</h4>
-                <p className="text-sm text-gray-600">Current key shown above</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 dark:bg-gray-950">
+      <AuthCard
+        title="Admin Setup for DeliverIQ"
+        description="Create your first admin account and set the global security key."
+        footerText="Already set up?"
+        footerLinkText="Admin Login"
+        footerLinkHref="/admin/login"
+      >
+        <form onSubmit={handleSetup} className="space-y-4">
+          <div>
+            <Label htmlFor="name">Admin Name</Label>
+            <Input
+              id="name"
+              type="text"
+              placeholder="Admin User"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="email">Admin Email</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="admin@deliveriq.com"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="confirm-password">Confirm Password</Label>
+            <Input
+              id="confirm-password"
+              type="password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="security-key">Admin Security Key</Label>
+            <Input
+              id="security-key"
+              type="password"
+              placeholder={isKeySet ? "Key already set (leave blank to keep)" : "Set a new security key"}
+              required={!isKeySet} // Required only if key is not set
+              value={securityKey}
+              onChange={(e) => setSecurityKey(e.target.value)}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              This key is required for all admin logins. Default: `DELIVERIQ_ADMIN_2024`
+            </p>
+          </div>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? 'Setting Up...' : 'Complete Setup'}
+          </Button>
+        </form>
+      </AuthCard>
     </div>
   )
 }
