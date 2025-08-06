@@ -1,39 +1,41 @@
 import bcrypt from 'bcryptjs';
+import { getSetting, setSetting } from '@/actions/db-actions'; // Assuming db-actions handles settings
 
 const SALT_ROUNDS = 10;
+const ADMIN_SECURITY_KEY_SETTING_NAME = "admin_security_key";
 
-// Simple hash function for demo purposes
-// In production, use bcrypt or similar secure hashing libraries
-export const hashPassword = async (password: string): Promise<string> => {
+export async function hashPassword(password: string): Promise<string> {
   const salt = await bcrypt.genSalt(SALT_ROUNDS);
   return bcrypt.hash(password, salt);
 }
 
-export const verifyPassword = async (password: string, hashedPassword: string): Promise<boolean> => {
-  return bcrypt.compare(password, hashedPassword);
+export async function comparePassword(password: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(password, hash);
 }
 
-export const hashSecurityKey = async (key: string): Promise<string> => {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(key + "DELIVERIQ_KEY_SALT_2024")
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
+export async function getAdminSecurityKeyHash(): Promise<string | null> {
+  const setting = await getSetting(ADMIN_SECURITY_KEY_SETTING_NAME);
+  return setting?.value || null;
 }
 
-export const verifySecurityKey = async (key: string, hashedKey: string): Promise<boolean> => {
-  const hashedInput = await hashSecurityKey(key)
-  return hashedInput === hashedKey
-}
-
-// Generate secure random key
-export const generateSecureKey = (): string => {
-  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*"
-  let result = "DELIVERIQ_"
-
-  for (let i = 0; i < 32; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length))
+export async function setAdminSecurityKey(key: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const hashedKey = await hashPassword(key);
+    const result = await setSetting(ADMIN_SECURITY_KEY_SETTING_NAME, hashedKey);
+    return result;
+  } catch (error: any) {
+    console.error("Error setting admin security key:", error);
+    return { success: false, message: error.message || "Failed to set security key." };
   }
+}
 
-  return result
+export async function verifyAdminSecurityKey(key: string): Promise<boolean> {
+  const storedHash = await getAdminSecurityKeyHash();
+  if (!storedHash) {
+    // If no key is set, allow access for initial setup, or deny based on policy
+    // For this app, we'll assume if no key is set, it's an uninitialized state
+    // and the setup page will handle it. For login, it must be set.
+    return false;
+  }
+  return comparePassword(key, storedHash);
 }

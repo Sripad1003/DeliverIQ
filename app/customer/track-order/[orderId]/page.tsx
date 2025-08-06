@@ -1,116 +1,152 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { PageHeaderWithBack } from '@/components/layout/page-header-with-back'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { StatusAlert } from '@/components/ui/status-alert'
-import { getOrderDetails, updateOrderStatus, cancelOrder, Order, OrderStatus } from '@/lib/app-data'
-import { toast } from 'sonner'
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { PageHeaderWithBack } from "@/components/layout/page-header-with-back"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { StatusAlert } from "@/components/ui/status-alert"
+import { getOrderById, updateOrder } from "@/actions/order-actions"
+import { OrderStatus, OrderType } from "@/lib/app-data-types"
+import { toast } from "sonner"
 
 export default function TrackOrderPage({ params }: { params: { orderId: string } }) {
   const { orderId } = params
-  const [order, setOrder] = useState<Order | null>(null)
+  const [order, setOrder] = useState<OrderType | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isCancelling, setIsCancelling] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
-    const currentUserId = localStorage.getItem('currentUserId');
-    const currentUserType = localStorage.getItem('currentUserType');
-
-    if (!currentUserId || currentUserType !== 'customer') {
-      router.push('/login');
-      return;
-    }
-
     const fetchOrder = async () => {
-      setLoading(true);
-      const fetchedOrder = await getOrderDetails(orderId);
-      if (fetchedOrder && fetchedOrder.customerId === currentUserId) {
-        setOrder(fetchedOrder);
-      } else {
-        toast.error('Order not found or you do not have permission to view it.');
-        router.push('/customer/dashboard');
+      try {
+        const fetchedOrder = await getOrderById(orderId)
+        if (fetchedOrder) {
+          setOrder(fetchedOrder)
+        } else {
+          setError("Order not found.")
+          toast.error("Order not found.")
+        }
+      } catch (err) {
+        console.error("Failed to fetch order:", err)
+        setError("Failed to load order details. Please try again.")
+        toast.error("Failed to load order details.")
+      } finally {
+        setLoading(false)
       }
-      setLoading(false);
-    };
-
-    fetchOrder();
-  }, [orderId, router]);
+    }
+    fetchOrder()
+  }, [orderId])
 
   const handleCancelOrder = async () => {
-    if (!order) return;
-    setLoading(true);
-    const result = await cancelOrder(order.id);
-    if (result) {
-      toast.success('Order cancelled successfully.');
-      // Update local state to reflect cancellation
-      setOrder((prevOrder) => prevOrder ? { ...prevOrder, status: OrderStatus.Cancelled } : null);
-    } else {
-      toast.error('Failed to cancel order.');
+    if (!order) return
+
+    if (window.confirm("Are you sure you want to cancel this order?")) {
+      setIsCancelling(true)
+      try {
+        const result = await updateOrder({ ...order, status: OrderStatus.Cancelled })
+        if (result.success) {
+          setOrder((prev) => (prev ? { ...prev, status: OrderStatus.Cancelled } : null))
+          toast.success("Order cancelled successfully!")
+        } else {
+          setError(result.message)
+          toast.error(result.message)
+        }
+      } catch (err) {
+        console.error("Cancellation error:", err)
+        setError("An unexpected error occurred during cancellation.")
+        toast.error("An unexpected error occurred during cancellation.")
+      } finally {
+        setIsCancelling(false)
+      }
     }
-    setLoading(false);
-  };
+  }
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center">
-        <p>Loading order details...</p>
+      <div className="flex flex-col min-h-screen bg-gray-100 dark:bg-gray-900">
+        <PageHeaderWithBack title="Track Order" backHref="/customer/dashboard" />
+        <main className="flex-1 p-6 flex items-center justify-center">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Loading Order...</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="h-6 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              <div className="h-6 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              <div className="h-6 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            </CardContent>
+          </Card>
+        </main>
       </div>
-    );
+    )
   }
 
-  if (!order) {
-    return null; // Should redirect by now
+  if (error && !order) { // Only show error if order failed to load
+    return (
+      <div className="flex flex-col min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900 text-red-500">
+        <p>{error}</p>
+        <Button onClick={() => window.location.reload()} className="mt-4">
+          Retry
+        </Button>
+      </div>
+    )
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
+    <div className="flex flex-col min-h-screen bg-gray-100 dark:bg-gray-900">
       <PageHeaderWithBack title="Track Order" backHref="/customer/dashboard" />
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Order #{order.id.substring(0, 8)}</CardTitle>
-            <StatusAlert status={order.status} />
+      <main className="flex-1 p-6 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Order Details</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-2">
-              <p className="text-sm font-medium">Pickup Location: {order.pickupLocation}</p>
-              <p className="text-sm font-medium">Delivery Location: {order.deliveryLocation}</p>
-              <p className="text-sm font-medium">Item: {order.itemDescription}</p>
-              <p className="text-sm font-medium">Price: ${order.price.toFixed(2)}</p>
-            </div>
-            <div className="grid gap-2">
-              <h3 className="font-semibold">Driver Information</h3>
-              {order.driverId ? (
-                <>
-                  <p className="text-sm font-medium">Name: {order.driverName}</p>
-                  <p className="text-sm font-medium">Phone: {order.driverPhone}</p>
-                  <p className="text-sm font-medium">Vehicle: {order.driverVehicle}</p>
-                  <p className="text-sm font-medium">Rating: {order.driverRating}</p>
-                </>
-              ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">Driver not yet assigned.</p>
-              )}
-            </div>
-            <div className="grid gap-2">
-              <h3 className="font-semibold">Timeline</h3>
-              <p className="text-sm font-medium">Ordered: {new Date(order.createdAt).toLocaleString()}</p>
-              {order.pickupTime && (
-                <p className="text-sm font-medium">Picked Up: {new Date(order.pickupTime).toLocaleString()}</p>
-              )}
-              {order.deliveryTime && (
-                <p className="text-sm font-medium">Delivered: {new Date(order.deliveryTime).toLocaleString()}</p>
-              )}
-            </div>
-            {order.status !== OrderStatus.Cancelled && order.status !== OrderStatus.Delivered && (
-              <Button variant="destructive" onClick={handleCancelOrder} disabled={loading}>
-                {loading ? 'Cancelling...' : 'Cancel Order'}
-              </Button>
-            )}
-            {order.status === OrderStatus.Delivered && (
-              <Button onClick={() => router.push(`/customer/rate-driver/${order.id}`)}>Rate Driver</Button>
+          <CardContent className="space-y-4">
+            {error && <StatusAlert type="error" message={error} />}
+            {order ? (
+              <>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Order ID</p>
+                  <p className="text-lg font-bold">{order._id}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</p>
+                  <p className="text-lg font-bold">{order.status}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Pickup Location</p>
+                  <p className="text-lg font-bold">{order.pickupLocation}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Delivery Location</p>
+                  <p className="text-lg font-bold">{order.deliveryLocation}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Item Description</p>
+                  <p className="text-lg font-bold">{order.itemDescription}</p>
+                </div>
+                {order.driverId && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Assigned Driver ID</p>
+                    <p className="text-lg font-bold">{order.driverId}</p>
+                  </div>
+                )}
+                {order.status === OrderStatus.Pending && (
+                  <Button onClick={handleCancelOrder} className="w-full" variant="destructive" disabled={isCancelling}>
+                    {isCancelling ? "Cancelling..." : "Cancel Order"}
+                  </Button>
+                )}
+                {order.status === OrderStatus.Cancelled && (
+                  <StatusAlert type="info" message="This order has been cancelled." />
+                )}
+                {order.status === OrderStatus.Delivered && (
+                  <StatusAlert type="success" message="This order has been delivered." />
+                )}
+              </>
+            ) : (
+              <StatusAlert type="error" message="Order details could not be loaded." />
             )}
           </CardContent>
         </Card>

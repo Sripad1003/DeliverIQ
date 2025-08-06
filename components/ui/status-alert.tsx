@@ -1,47 +1,27 @@
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
-import { OrderStatus } from '@/lib/app-data'
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { CheckCircleIcon, XCircleIcon, InfoIcon } from 'lucide-react'
 
 interface StatusAlertProps {
-  status: OrderStatus;
+  type: "success" | "error" | "info"
+  message: string
+  title?: string
 }
 
-export function StatusAlert({ status }: StatusAlertProps) {
-  let variant: 'default' | 'destructive' = 'default';
-  let badgeVariant: 'default' | 'secondary' | 'destructive' | 'outline' = 'default';
-  let description = '';
+export function StatusAlert({ type, message, title }: StatusAlertProps) {
+  const Icon =
+    type === "success"
+      ? CheckCircleIcon
+      : type === "error"
+      ? XCircleIcon
+      : InfoIcon
 
-  switch (status) {
-    case OrderStatus.Pending:
-      badgeVariant = 'secondary';
-      description = 'Your order is awaiting assignment to a driver.';
-      break;
-    case OrderStatus.Assigned:
-      badgeVariant = 'default';
-      description = 'A driver has been assigned and is on their way to pickup.';
-      break;
-    case OrderStatus.PickedUp:
-      badgeVariant = 'default';
-      description = 'Your order has been picked up and is in transit.';
-      break;
-    case OrderStatus.Delivered:
-      badgeVariant = 'outline';
-      description = 'Your order has been successfully delivered.';
-      break;
-    case OrderStatus.Cancelled:
-      variant = 'destructive';
-      badgeVariant = 'destructive';
-      description = 'Your order has been cancelled.';
-      break;
-    default:
-      badgeVariant = 'secondary';
-      description = 'Unknown order status.';
-  }
+  const variant = type === "error" ? "destructive" : "default"
 
   return (
-    <Alert variant={variant} className="p-2">
-      <Badge variant={badgeVariant}>{status}</Badge>
-      <AlertDescription className="sr-only">{description}</AlertDescription>
+    <Alert variant={variant}>
+      <Icon className="h-4 w-4" />
+      <AlertTitle>{title || (type === "success" ? "Success" : type === "error" ? "Error" : "Info")}</AlertTitle>
+      <AlertDescription>{message}</AlertDescription>
     </Alert>
-  );
+  )
 }

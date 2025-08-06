@@ -1,155 +1,189 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { PageHeaderWithBack } from '@/components/layout/page-header-with-back'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Button } from '@/components/ui/button'
-import { getOrderDetails, updateDriverRating } from '@/lib/app-data'
-import { toast } from 'sonner'
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { PageHeaderWithBack } from "@/components/layout/page-header-with-back"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
+import { StatusAlert } from "@/components/ui/status-alert"
+import { getOrderById, updateOrder } from "@/actions/order-actions"
+import { OrderType } from "@/lib/app-data-types"
+import { updateDriverRating } from "@/actions/user-actions"
+import { toast } from "sonner"
 
 export default function RateDriverPage({ params }: { params: { orderId: string } }) {
   const { orderId } = params
-  const [rating, setRating] = useState(0)
-  const [comment, setComment] = useState('')
-  const [order, setOrder] = useState<any>(null)
+  const [order, setOrder] = useState<OrderType | null>(null)
+  const [rating, setRating] = useState<string>("")
+  const [feedback, setFeedback] = useState("")
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
-    const currentUserId = localStorage.getItem('currentUserId');
-    const currentUserType = localStorage.getItem('currentUserType');
-
-    if (!currentUserId || currentUserType !== 'customer') {
-      router.push('/login');
-      return;
-    }
-
     const fetchOrder = async () => {
-      setLoading(true);
-      const fetchedOrder = await getOrderDetails(orderId);
-      if (fetchedOrder && fetchedOrder.customerId === currentUserId) {
-        setOrder(fetchedOrder);
-      } else {
-        toast.error('Order not found or you do not have permission to view it.');
-        router.push('/customer/dashboard');
+      try {
+        const fetchedOrder = await getOrderById(orderId)
+        if (fetchedOrder) {
+          setOrder(fetchedOrder)
+          if (fetchedOrder.driverRating) {
+            setRating(fetchedOrder.driverRating.toString())
+          }
+          if (fetchedOrder.driverFeedback) {
+            setFeedback(fetchedOrder.driverFeedback)
+          }
+        } else {
+          setError("Order not found.")
+          toast.error("Order not found.")
+        }
+      } catch (err) {
+        console.error("Failed to fetch order:", err)
+        setError("Failed to load order details. Please try again.")
+        toast.error("Failed to load order details.")
+      } finally {
+        setLoading(false)
       }
-      setLoading(false);
-    };
+    }
+    fetchOrder()
+  }, [orderId])
 
-    fetchOrder();
-  }, [orderId, router]);
-
-  const handleRatingChange = (newRating: number) => {
-    setRating(newRating)
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmitRating = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!order || !order.driverId) {
-      toast.error('Cannot rate: Driver not assigned or order not found.');
-      return;
+    setError(null)
+    setIsSubmitting(true)
+
+    if (!order) {
+      setError("Order data is missing.")
+      setIsSubmitting(false)
+      return
     }
-    if (rating === 0) {
-      toast.error('Please select a rating.');
-      return;
+    if (!rating) {
+      setError("Please select a rating.")
+      setIsSubmitting(false)
+      return
     }
-    setLoading(true);
-    const result = await updateDriverRating(order.driverId, rating);
-    if (result) {
-      toast.success('Driver rated successfully!');
-      router.push('/customer/dashboard');
-    } else {
-      toast.error('Failed to submit rating.');
+
+    try {
+      // Update order with rating and feedback
+      const updatedOrderResult = await updateOrder({
+        ...order,
+        driverRating: parseInt(rating),
+        driverFeedback: feedback,
+      })
+
+      if (!updatedOrderResult.success) {
+        setError(updatedOrderResult.message)
+        toast.error(updatedOrderResult.message)
+        setIsSubmitting(false)
+        return
+      }
+
+      // Update driver's average rating
+      if (order.driverId) {
+        const updateDriverResult = await updateDriverRating(order.driverId, parseInt(rating))
+        if (!updateDriverResult.success) {
+          // Log this error but don't block the user, as order update was successful
+          console.warn("Failed to update driver's average rating:", updateDriverResult.message)
+          toast.warning("Order rated, but failed to update driver's average rating.")
+        } else {
+          toast.success("Driver rating submitted successfully!")
+        }
+      } else {
+        toast.success("Order rated successfully! No driver assigned to update rating.")
+      }
+
+      router.push("/customer/dashboard")
+    } catch (err) {
+      console.error("Rating submission error:", err)
+      setError("An unexpected error occurred. Please try again.")
+      toast.error("An unexpected error occurred during rating submission.")
+    } finally {
+      setIsSubmitting(false)
     }
-    setLoading(false);
   }
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center">
-        <p>Loading order details...</p>
+      <div className="flex flex-col min-h-screen bg-gray-100 dark:bg-gray-900">
+        <PageHeaderWithBack title="Rate Driver" backHref="/customer/dashboard" />
+        <main className="flex-1 p-6 flex items-center justify-center">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Loading Order...</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="h-6 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              <div className="h-24 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            </CardContent>
+          </Card>
+        </main>
       </div>
-    );
+    )
   }
 
-  if (!order) {
-    return null; // Should redirect by now
+  if (error && !order) { // Only show error if order failed to load
+    return (
+      <div className="flex flex-col min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900 text-red-500">
+        <p>{error}</p>
+        <Button onClick={() => window.location.reload()} className="mt-4">
+          Retry
+        </Button>
+      </div>
+    )
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <PageHeaderWithBack title="Rate Your Driver" backHref={`/customer/track-order/${orderId}`} />
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
-        <Card>
+    <div className="flex flex-col min-h-screen bg-gray-100 dark:bg-gray-900">
+      <PageHeaderWithBack title="Rate Driver" backHref="/customer/dashboard" />
+      <main className="flex-1 p-6 flex items-center justify-center">
+        <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Order #{order.id.substring(0, 8)}</CardTitle>
+            <CardTitle>Rate Your Delivery Experience</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Driver:</p>
-              <p className="text-sm font-medium">{order.driverName || 'N/A'}</p>
-            </div>
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Pickup:</p>
-              <p className="text-sm font-medium">{order.pickupLocation}</p>
-            </div>
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Delivery:</p>
-              <p className="text-sm font-medium">{order.deliveryLocation}</p>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="rating">Rating</Label>
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <StarIcon
-                      key={star}
-                      className={`h-8 w-8 cursor-pointer ${
-                        star <= rating ? 'fill-yellow-400 text-yellow-400' : 'fill-gray-300 text-gray-300'
-                      }`}
-                      onClick={() => handleRatingChange(star)}
-                    />
-                  ))}
-                </div>
+          <CardContent>
+            <p className="mb-4 text-gray-700 dark:text-gray-300">
+              Order from {order?.pickupLocation} to {order?.deliveryLocation}
+            </p>
+            <form onSubmit={handleSubmitRating} className="space-y-4">
+              {error && <StatusAlert type="error" message={error} />}
+              <div>
+                <Label htmlFor="rating">Rating (1-5 Stars)</Label>
+                <Select value={rating} onValueChange={setRating} disabled={isSubmitting || !!order?.driverRating}>
+                  <SelectTrigger id="rating">
+                    <SelectValue placeholder="Select a rating" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5 Stars - Excellent</SelectItem>
+                    <SelectItem value="4">4 Stars - Very Good</SelectItem>
+                    <SelectItem value="3">3 Stars - Good</SelectItem>
+                    <SelectItem value="2">2 Stars - Fair</SelectItem>
+                    <SelectItem value="1">1 Star - Poor</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="comment">Comment (Optional)</Label>
+              <div>
+                <Label htmlFor="feedback">Feedback (Optional)</Label>
                 <Textarea
-                  id="comment"
-                  placeholder="Share your experience with the driver"
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
+                  id="feedback"
+                  placeholder="Share your experience..."
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  disabled={isSubmitting || !!order?.driverFeedback}
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Submitting...' : 'Submit Rating'}
+              <Button type="submit" className="w-full" disabled={isSubmitting || !!order?.driverRating}>
+                {isSubmitting ? "Submitting..." : order?.driverRating ? "Rating Submitted" : "Submit Rating"}
               </Button>
             </form>
           </CardContent>
         </Card>
       </main>
     </div>
-  )
-}
-
-function StarIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-    </svg>
   )
 }

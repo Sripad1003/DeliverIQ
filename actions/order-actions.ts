@@ -1,160 +1,129 @@
 'use server'
 
-import { connectToDatabase } from '@/lib/mongodb';
-import { Order, OrderStatus, Customer, Driver } from '@/lib/app-data';
-import { ObjectId } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
+import { OrderType, OrderStatus } from '@/lib/app-data-types';
+import { getClient } from '@/lib/mongodb';
 
-export async function createOrder(orderData: Omit<Order, 'id' | 'status' | 'driverId' | 'pickupTime' | 'deliveryTime'>) {
+const DATABASE_NAME = 'DeliverIQ';
+
+// --- Helper to get collection ---
+async function getCollection<T>(collectionName: string) {
+  const client = await getClient();
+  const db = client.db(DATABASE_NAME);
+  return db.collection<T>(collectionName);
+}
+
+// --- Order Operations ---
+
+export async function createOrder(orderData: Omit<OrderType, '_id'>): Promise<{ success: boolean; message?: string; orderId?: string }> {
   try {
-    const { db } = await connectToDatabase();
-    const ordersCollection = db.collection<Order>('orders');
-
-    const newOrder: Order = {
+    const ordersCollection = await getCollection<OrderType>('orders');
+    const result = await ordersCollection.insertOne({
       ...orderData,
-      id: new ObjectId().toHexString(),
-      status: OrderStatus.Pending,
-      driverId: null, // No driver assigned initially
-      pickupTime: null,
-      deliveryTime: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    const result = await ordersCollection.insertOne(newOrder);
-    return { success: true, message: 'Order created successfully.', orderId: result.insertedId.toHexString() };
-  } catch (error) {
-    console.error('Error creating order:', error);
-    return { success: false, message: 'Failed to create order.' };
+      orderDate: new Date().toISOString(), // Ensure orderDate is set on creation
+      status: OrderStatus.Pending, // Ensure initial status is Pending
+    });
+    if (result.acknowledged) {
+      return { success: true, message: "Order created successfully.", orderId: result.insertedId.toHexString() };
+    }
+    return { success: false, message: "Failed to create order." };
+  } catch (error: any) {
+    console.error("Error creating order:", error);
+    return { success: false, message: error.message || "An unexpected error occurred." };
   }
 }
 
-export async function getOrders(filter: { customerId?: string; driverId?: string; status?: OrderStatus } = {}) {
+export async function getOrders(): Promise<OrderType[]> {
   try {
-    const { db } = await connectToDatabase();
-    const ordersCollection = db.collection<Order>('orders');
-    const query: any = {};
-
-    if (filter.customerId) {
-      query.customerId = filter.customerId;
-    }
-    if (filter.driverId) {
-      query.driverId = filter.driverId;
-    }
-    if (filter.status) {
-      query.status = filter.status;
-    }
-
-    const orders = await ordersCollection.find(query).sort({ createdAt: -1 }).toArray();
-
-    // Optionally populate customer and driver details
-    const customersCollection = db.collection<Customer>('customers');
-    const driversCollection = db.collection<Driver>('drivers');
-
-    const populatedOrders = await Promise.all(orders.map(async (order) => {
-      const customer = await customersCollection.findOne({ id: order.customerId });
-      const driver = order.driverId ? await driversCollection.findOne({ id: order.driverId }) : null;
-      return {
-        ...order,
-        customerName: customer?.name || 'Unknown Customer',
-        driverName: driver?.name || 'Unassigned',
-        driverPhone: driver?.phone || 'N/A',
-        driverVehicle: driver?.vehicle || 'N/A',
-        driverRating: driver?.rating ? (driver.rating.sum / driver.rating.count).toFixed(1) : 'N/A',
-      };
-    }));
-
-    return populatedOrders;
-  } catch (error) {
-    console.error('Error fetching orders:', error);
-    return [];
-  }
-}
-
-export async function getOrderById(orderId: string) {
-  try {
-    const { db } = await connectToDatabase();
-    const ordersCollection = db.collection<Order>('orders');
-    const order = await ordersCollection.findOne({ id: orderId });
-
-    if (!order) return null;
-
-    // Optionally populate customer and driver details
-    const customersCollection = db.collection<Customer>('customers');
-    const driversCollection = db.collection<Driver>('drivers');
-
-    const customer = await customersCollection.findOne({ id: order.customerId });
-    const driver = order.driverId ? await driversCollection.findOne({ id: order.driverId }) : null;
-
-    return {
+    const ordersCollection = await getCollection<OrderType>('orders');
+    const orders = await ordersCollection.find({}).toArray();
+    return orders.map(order => ({
       ...order,
-      customerName: customer?.name || 'Unknown Customer',
-      driverName: driver?.name || 'Unassigned',
-      driverPhone: driver?.phone || 'N/A',
-      driverVehicle: driver?.vehicle || 'N/A',
-      driverRating: driver?.rating ? (driver.rating.sum / driver.rating.count).toFixed(1) : 'N/A',
-    };
-  } catch (error) {
-    console.error('Error fetching order by ID:', error);
+      _id: order._id?.toHexString(),
+    }));
+  } catch (error: any) {
+    console.error("Error fetching orders:", error);
+    throw new Error(error.message || "Failed to fetch orders.");
+  }
+}
+
+export async function getOrderById(orderId: string): Promise<OrderType | null> {
+  try {
+    const ordersCollection = await getCollection<OrderType>('orders');
+    const order = await ordersCollection.findOne({ _id: new ObjectId(orderId) });
+    if (order) {
+      return { ...order, _id: order._id?.toHexString() };
+    }
     return null;
+  } catch (error: any) {
+    console.error(`Error fetching order ${orderId}:`, error);
+    throw new Error(error.message || "Failed to fetch order.");
   }
 }
 
-export async function updateOrder(updatedOrder: Partial<Order> & { id: string }) {
+export async function getOrdersByCustomerId(customerId: string): Promise<OrderType[]> {
   try {
-    const { db } = await connectToDatabase();
-    const ordersCollection = db.collection<Order>('orders');
-
-    const result = await ordersCollection.updateOne(
-      { id: updatedOrder.id },
-      { $set: { ...updatedOrder, updatedAt: new Date().toISOString() } }
-    );
-
-    if (result.matchedCount === 0) {
-      return { success: false, message: 'Order not found.' };
-    }
-    return { success: true, message: 'Order updated successfully.' };
-  } catch (error) {
-    console.error('Error updating order:', error);
-    return { success: false, message: 'Failed to update order.' };
+    const ordersCollection = await getCollection<OrderType>('orders');
+    const orders = await ordersCollection.find({ customerId }).toArray();
+    return orders.map(order => ({
+      ...order,
+      _id: order._id?.toHexString(),
+    }));
+  } catch (error: any) {
+    console.error(`Error fetching orders for customer ${customerId}:`, error);
+    throw new Error(error.message || "Failed to fetch customer orders.");
   }
 }
 
-export async function cancelOrder(orderId: string) {
+export async function getOrdersByDriverId(driverId: string): Promise<OrderType[]> {
   try {
-    const { db } = await connectToDatabase();
-    const ordersCollection = db.collection<Order>('orders');
-
-    const result = await ordersCollection.updateOne(
-      { id: orderId },
-      { $set: { status: OrderStatus.Cancelled, updatedAt: new Date().toISOString() } }
-    );
-
-    if (result.matchedCount === 0) {
-      return { success: false, message: 'Order not found.' };
-    }
-    return { success: true, message: 'Order cancelled successfully.' };
-  } catch (error) {
-    console.error('Error cancelling order:', error);
-    return { success: false, message: 'Failed to cancel order.' };
+    const ordersCollection = await getCollection<OrderType>('orders');
+    const orders = await ordersCollection.find({ driverId }).toArray();
+    return orders.map(order => ({
+      ...order,
+      _id: order._id?.toHexString(),
+    }));
+  } catch (error: any) {
+    console.error(`Error fetching orders for driver ${driverId}:`, error);
+    throw new Error(error.message || "Failed to fetch driver orders.");
   }
 }
 
-export async function assignDriverToOrder(orderId: string, driverId: string) {
+export async function updateOrder(updatedOrder: OrderType): Promise<{ success: boolean; message?: string }> {
   try {
-    const { db } = await connectToDatabase();
-    const ordersCollection = db.collection<Order>('orders');
+    if (!updatedOrder._id) {
+      return { success: false, message: "Order ID is required for update." };
+    }
+    const ordersCollection = await getCollection<OrderType>('orders');
+    const { _id, ...dataToUpdate } = updatedOrder; // Exclude _id from $set operation
 
     const result = await ordersCollection.updateOne(
-      { id: orderId },
-      { $set: { driverId: driverId, status: OrderStatus.Assigned, updatedAt: new Date().toISOString() } }
+      { _id: new ObjectId(_id) },
+      { $set: dataToUpdate }
     );
-
-    if (result.matchedCount === 0) {
-      return { success: false, message: 'Order not found.' };
+    if (result.modifiedCount === 1) {
+      return { success: true, message: "Order updated successfully." };
     }
-    return { success: true, message: 'Driver assigned successfully.' };
-  } catch (error) {
-    console.error('Error assigning driver to order:', error);
-    return { success: false, message: 'Failed to assign driver to order.' };
+    return { success: false, message: "Order not found or no changes made." };
+  } catch (error: any) {
+    console.error(`Error updating order ${updatedOrder._id}:`, error);
+    return { success: false, message: error.message || "Failed to update order." };
+  }
+}
+
+export async function cancelOrder(orderId: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const ordersCollection = await getCollection<OrderType>('orders');
+    const result = await ordersCollection.updateOne(
+      { _id: new ObjectId(orderId) },
+      { $set: { status: OrderStatus.Cancelled } }
+    );
+    if (result.modifiedCount === 1) {
+      return { success: true, message: "Order cancelled successfully." };
+    }
+    return { success: false, message: "Order not found or already cancelled." };
+  } catch (error: any) {
+    console.error(`Error cancelling order ${orderId}:`, error);
+    return { success: false, message: error.message || "Failed to cancel order." };
   }
 }

@@ -1,22 +1,24 @@
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+'use client'
+
+import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
 import { ArrowLeftIcon } from 'lucide-react'
 
 interface PageHeaderWithBackProps {
-  title: string;
-  backHref: string;
+  title: string
+  backHref: string
 }
 
 export function PageHeaderWithBack({ title, backHref }: PageHeaderWithBackProps) {
+  const router = useRouter()
+
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-gray-100/40 px-6 dark:bg-gray-800/40 lg:h-[60px]">
-      <Link href={backHref}>
-        <Button variant="ghost" size="icon">
-          <ArrowLeftIcon className="h-5 w-5" />
-          <span className="sr-only">Back</span>
-        </Button>
-      </Link>
-      <h1 className="flex-1 text-lg font-semibold">{title}</h1>
+    <header className="bg-white dark:bg-gray-800 shadow p-4 flex items-center gap-4">
+      <Button variant="ghost" size="icon" onClick={() => router.push(backHref)}>
+        <ArrowLeftIcon className="h-6 w-6" />
+        <span className="sr-only">Back</span>
+      </Button>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{title}</h1>
     </header>
   )
 }

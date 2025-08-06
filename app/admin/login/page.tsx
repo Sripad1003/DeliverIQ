@@ -1,62 +1,66 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { AuthCard } from '@/components/auth/auth-card'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { verifyAdminCredentials, verifyAdminSecurityKey } from '@/actions/admin-actions'
-import { toast } from 'sonner'
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { AuthCard } from "@/components/auth/auth-card"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { StatusAlert } from "@/components/ui/status-alert"
+import { adminLogin } from "@/actions/admin-actions"
+import { toast } from "sonner"
 
 export default function AdminLoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [securityKey, setSecurityKey] = useState('')
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [securityKey, setSecurityKey] = useState("")
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
     setLoading(true)
 
-    const keyResult = await verifyAdminSecurityKey(securityKey);
-    if (!keyResult.success) {
-      toast.error('Invalid Admin Security Key.');
-      setLoading(false);
-      return;
+    try {
+      const result = await adminLogin(email, password, securityKey)
+      if (result.success) {
+        toast.success("Admin login successful!")
+        router.push("/admin/dashboard")
+      } else {
+        setError(result.message)
+        toast.error(result.message)
+      }
+    } catch (err) {
+      console.error("Login error:", err)
+      setError("An unexpected error occurred. Please try again.")
+      toast.error("An unexpected error occurred.")
+    } finally {
+      setLoading(false)
     }
-
-    const loginResult = await verifyAdminCredentials(email, password);
-    if (loginResult.success && loginResult.adminId) {
-      localStorage.setItem('currentAdminId', loginResult.adminId);
-      toast.success('Admin login successful!');
-      router.push('/admin/dashboard');
-    } else {
-      toast.error(loginResult.message || 'Admin login failed.');
-    }
-    setLoading(false);
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 dark:bg-gray-950">
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
       <AuthCard
-        title="Admin Login for DeliverIQ"
-        description="Enter your admin credentials to access the dashboard."
-        footerText="Need to set up admin access?"
-        footerLinkText="Admin Setup"
-        footerLinkHref="/admin/setup"
+        title="Admin Login"
+        description="Access the DeliverIQ Admin Dashboard"
+        footerText="Don't have admin access?"
+        footerLinkText="Contact support"
+        footerLinkHref="#"
       >
         <form onSubmit={handleLogin} className="space-y-4">
+          {error && <StatusAlert type="error" message={error} />}
           <div>
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
               placeholder="admin@deliveriq.com"
-              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              required
             />
           </div>
           <div>
@@ -64,9 +68,10 @@ export default function AdminLoginPage() {
             <Input
               id="password"
               type="password"
-              required
+              placeholder="********"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              required
             />
           </div>
           <div>
@@ -75,13 +80,14 @@ export default function AdminLoginPage() {
               id="security-key"
               type="password"
               placeholder="DELIVERIQ_ADMIN_2024"
-              required
               value={securityKey}
               onChange={(e) => setSecurityKey(e.target.value)}
+              required
             />
+            <p className="text-sm text-gray-500 mt-1">Default: DELIVERIQ_ADMIN_2024</p>
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? "Logging in..." : "Login"}
           </Button>
         </form>
       </AuthCard>

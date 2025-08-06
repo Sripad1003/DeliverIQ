@@ -1,188 +1,112 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { PageHeaderWithBack } from '@/components/layout/page-header-with-back'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
-import { createNewOrder, getCustomerSession, PaymentMethod, DeliveryType } from '@/lib/app-data'
-import { toast } from 'sonner'
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { PageHeaderWithBack } from "@/components/layout/page-header-with-back"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
+import { StatusAlert } from "@/components/ui/status-alert"
+import { createOrder } from "@/actions/order-actions"
+import { getCustomerSession } from "@/lib/app-data"
+import { toast } from "sonner"
 
 export default function BookTransportPage() {
-  const [pickupLocation, setPickupLocation] = useState('')
-  const [deliveryLocation, setDeliveryLocation] = useState('')
-  const [itemDescription, setItemDescription] = useState('')
-  const [weight, setWeight] = useState('')
-  const [dimensions, setDimensions] = useState('')
-  const [deliveryType, setDeliveryType] = useState<DeliveryType>(DeliveryType.Standard)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CreditCard)
-  const [price, setPrice] = useState('')
+  const [pickupLocation, setPickupLocation] = useState("")
+  const [deliveryLocation, setDeliveryLocation] = useState("")
+  const [itemDescription, setItemDescription] = useState("")
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [customerId, setCustomerId] = useState<string | null>(null)
   const router = useRouter()
 
-  useEffect(() => {
-    const currentUserId = localStorage.getItem('currentUserId');
-    const currentUserType = localStorage.getItem('currentUserType');
-
-    if (!currentUserId || currentUserType !== 'customer') {
-      router.push('/login');
-      return;
-    }
-    setCustomerId(currentUserId);
-  }, [router]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!customerId) {
-      toast.error('Customer not logged in.');
-      return;
-    }
+    setError(null)
     setLoading(true)
 
-    const orderData = {
-      customerId: customerId,
-      pickupLocation,
-      deliveryLocation,
-      itemDescription,
-      weight: parseFloat(weight),
-      dimensions,
-      deliveryType,
-      paymentMethod,
-      price: parseFloat(price),
+    const customer = await getCustomerSession()
+    if (!customer) {
+      setError("You must be logged in to book transport.")
+      setLoading(false)
+      toast.error("Please log in to book transport.")
+      router.push("/login")
+      return
     }
 
-    const result = await createNewOrder(orderData)
-    if (result.success) {
-      toast.success('Order placed successfully!')
-      router.push('/customer/dashboard')
-    } else {
-      toast.error(result.message || 'Failed to place order.')
-    }
-    setLoading(false)
-  }
+    try {
+      const result = await createOrder({
+        customerId: customer._id!,
+        pickupLocation,
+        deliveryLocation,
+        itemDescription,
+        status: "Pending",
+        orderDate: new Date().toISOString(),
+      })
 
-  if (!customerId) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center">
-        <p>Redirecting to login...</p>
-      </div>
-    );
+      if (result.success) {
+        toast.success("Transport booked successfully!")
+        router.push(`/customer/track-order/${result.orderId}`)
+      } else {
+        setError(result.message)
+        toast.error(result.message)
+      }
+    } catch (err) {
+      console.error("Booking error:", err)
+      setError("An unexpected error occurred. Please try again.")
+      toast.error("An unexpected error occurred during booking.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <PageHeaderWithBack title="Book New Transport" backHref="/customer/dashboard" />
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
-        <Card>
+    <div className="flex flex-col min-h-screen bg-gray-100 dark:bg-gray-900">
+      <PageHeaderWithBack title="Book Transport" backHref="/customer/dashboard" />
+      <main className="flex-1 p-6 flex items-center justify-center">
+        <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Order Details</CardTitle>
+            <CardTitle>New Transport Request</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
+            <form onSubmit={handleBooking} className="space-y-4">
+              {error && <StatusAlert type="error" message={error} />}
+              <div>
                 <Label htmlFor="pickup-location">Pickup Location</Label>
                 <Input
                   id="pickup-location"
+                  type="text"
                   placeholder="Enter pickup location"
-                  required
                   value={pickupLocation}
                   onChange={(e) => setPickupLocation(e.target.value)}
+                  required
                 />
               </div>
-              <div className="space-y-2">
+              <div>
                 <Label htmlFor="delivery-location">Delivery Location</Label>
                 <Input
                   id="delivery-location"
+                  type="text"
                   placeholder="Enter delivery location"
-                  required
                   value={deliveryLocation}
                   onChange={(e) => setDeliveryLocation(e.target.value)}
+                  required
                 />
               </div>
-              <div className="space-y-2 md:col-span-2">
+              <div>
                 <Label htmlFor="item-description">Item Description</Label>
                 <Textarea
                   id="item-description"
-                  placeholder="Describe the item to be transported"
-                  required
+                  placeholder="Describe the item(s) to be transported"
                   value={itemDescription}
                   onChange={(e) => setItemDescription(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="weight">Weight (kg)</Label>
-                <Input
-                  id="weight"
-                  type="number"
-                  placeholder="e.g., 5.0"
-                  step="0.1"
                   required
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="dimensions">Dimensions (LxWxH cm)</Label>
-                <Input
-                  id="dimensions"
-                  placeholder="e.g., 30x20x10"
-                  required
-                  value={dimensions}
-                  onChange={(e) => setDimensions(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="delivery-type">Delivery Type</Label>
-                <Select value={deliveryType} onValueChange={(value: DeliveryType) => setDeliveryType(value)}>
-                  <SelectTrigger id="delivery-type">
-                    <SelectValue placeholder="Select delivery type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(DeliveryType).map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="payment-method">Payment Method</Label>
-                <Select value={paymentMethod} onValueChange={(value: PaymentMethod) => setPaymentMethod(value)}>
-                  <SelectTrigger id="payment-method">
-                    <SelectValue placeholder="Select payment method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(PaymentMethod).map((method) => (
-                      <SelectItem key={method} value={method}>
-                        {method}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="price">Price ($)</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  placeholder="e.g., 25.00"
-                  step="0.01"
-                  required
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Placing Order...' : 'Place Order'}
-                </Button>
-              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Booking..." : "Book Now"}
+              </Button>
             </form>
           </CardContent>
         </Card>

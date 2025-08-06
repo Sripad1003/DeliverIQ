@@ -1,49 +1,78 @@
 # DeliverIQ
 
-DeliverIQ is a project designed to automatically synchronize your deployed chats on v0.dev with this GitHub repository. This ensures that any changes made to your deployed app are seamlessly pushed to the repository, allowing you to focus on building and deploying your application without worrying about version control.
+DeliverIQ is a comprehensive logistics and delivery management platform.
 
 ## Features
 
-- **Automatic Synchronization**: Any changes made to your deployed app on v0.dev will be automatically pushed to this repository.
-- **Seamless Development**: Continue building and deploying your app without the hassle of manual updates.
-- **Real-time Updates**: Stay up-to-date with the latest changes in your application directly from the repository.
+- **Customer Portal**: Book transport, track orders, rate drivers.
+- **Driver Portal**: Manage deliveries, update status.
+- **Admin Dashboard**: Manage admins, view overall statistics, manage security settings.
+- **Real-time Updates**: (Future feature) Track driver locations and order status in real-time.
+- **MongoDB Integration**: Persistent storage for all user, admin, driver, and order data.
 
-## Technology Stack
+## Getting Started
 
-- **TypeScript**: 94.8%
-- **CSS**: 5.0%
-- **JavaScript**: 0.2%
+### 1. Clone the repository
 
-## Installation
+\`\`\`bash
+git clone https://github.com/your-username/DeliverIQ.git
+cd DeliverIQ
+\`\`\`
 
-To get started with DeliverIQ, follow these steps:
+### 2. Install dependencies
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Sripad1003/DeliverIQ.git
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd DeliverIQ
-   ```
-3. Install the dependencies:
-   ```bash
-   npm install
-   ```
+\`\`\`bash
+npm install
+# or
+yarn install
+\`\`\`
 
-## Usage
+### 3. Set up Environment Variables
 
-After installation, you can deploy your app to v0.dev. DeliverIQ will automatically handle synchronization with this repository.
+Create a `.env.local` file in the root of your project and add your MongoDB connection string:
 
-## License
+\`\`\`
+MONGODB_URI=mongodb+srv://chiliverysripad:Sripad1003@cluster0.hmzrnnp.mongodb.net/
+\`\`\`
 
-No license information is provided.
+Replace the placeholder with your actual MongoDB connection string.
 
-## Contributing
+### 4. Run the development server
 
-Contributions are welcome! Please fork the repository and submit a pull request for any enhancements or bug fixes.
+\`\`\`bash
+npm run dev
+# or
+yarn dev
+\`\`\`
 
-## Contact
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-For any inquiries or issues, please contact the repository owner.
+### Default Accounts (for initial testing after MongoDB seeding)
 
+Upon first load, the application will seed the database with the following demo accounts:
+
+**Admin:**
+- Email: `admin@deliveriq.com`
+- Password: `admin123`
+- Admin Security Key: `DELIVERIQ_ADMIN_2024`
+
+**Customer:**
+- Email: `customer@deliveriq.com`
+- Password: `customer123`
+
+**Driver:**
+- Email: `driver@deliveriq.com`
+- Password: `driver123`
+
+### Project Structure
+
+- `app/`: Next.js App Router pages and layouts.
+- `actions/`: Server Actions for database interactions.
+- `components/`: Reusable React components (UI, layout, auth).
+- `lib/`: Utility functions, data models, and MongoDB connection.
+- `public/`: Static assets.
+- `styles/`: Global CSS.
+
+## Deployment
+
+This project can be easily deployed to Vercel. Ensure your `MONGODB_URI` environment variable is set in your Vercel project settings.

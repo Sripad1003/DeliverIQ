@@ -1,26 +1,31 @@
-import { MongoClient, Db } from 'mongodb';
+import { MongoClient } from 'mongodb';
 
 const uri = process.env.MONGODB_URI;
-const dbName = 'DeliverIQ'; // Your database name
+const options = {};
+
+let client: MongoClient;
+let clientPromise: Promise<MongoClient>;
 
 if (!uri) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
+  throw new Error('Please add your MONGODB_URI to .env.local');
 }
 
-let cachedClient: MongoClient | null = null;
-let cachedDb: Db | null = null;
-
-export async function connectToDatabase() {
-  if (cachedClient && cachedDb) {
-    return { client: cachedClient, db: cachedDb };
+// In production mode, it's best to not use a global variable.
+// In development mode, use a global variable so that the client is not recreated on every hot reload.
+if (process.env.NODE_ENV === 'development') {
+  // @ts-ignore
+  if (!global._mongoClientPromise) {
+    client = new MongoClient(uri, options);
+    // @ts-ignore
+    global._mongoClientPromise = client.connect();
   }
+  // @ts-ignore
+  clientPromise = global._mongoClientPromise;
+} else {
+  client = new MongoClient(uri, options);
+  clientPromise = client.connect();
+}
 
-  const client = new MongoClient(uri!);
-  await client.connect();
-  const db = client.db(dbName);
-
-  cachedClient = client;
-  cachedDb = db;
-
-  return { client, db };
+export async function getClient(): Promise<MongoClient> {
+  return clientPromise;
 }

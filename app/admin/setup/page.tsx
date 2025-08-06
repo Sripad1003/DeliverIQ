@@ -1,135 +1,158 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { AuthCard } from '@/components/auth/auth-card'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { createAdmin, setAdminSecurityKey, getAdminSecurityKeyHash } from '@/actions/admin-actions'
-import { toast } from 'sonner'
+import { useState, useEffect } from "react"
+import { PageHeaderWithBack } from "@/components/layout/page-header-with-back"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { StatusAlert } from "@/components/ui/status-alert"
+import { getSecurityKey, setSecurityKey } from "@/actions/admin-actions"
+import { toast } from "sonner"
 
 export default function AdminSetupPage() {
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [securityKey, setSecurityKey] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [isKeySet, setIsKeySet] = useState(false)
-  const router = useRouter()
+  const [currentKey, setCurrentKey] = useState("")
+  const [newKey, setNewKey] = useState("")
+  const [confirmNewKey, setConfirmNewKey] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
-    const checkSecurityKey = async () => {
-      const hash = await getAdminSecurityKeyHash();
-      setIsKeySet(!!hash);
-    };
-    checkSecurityKey();
-  }, []);
+    fetchSecurityKey()
+  }, [])
 
-  const handleSetup = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const fetchSecurityKey = async () => {
     setLoading(true)
-
-    if (password !== confirmPassword) {
-      toast.error('Passwords do not match.')
+    setError(null)
+    try {
+      const key = await getSecurityKey()
+      setCurrentKey(key || "Not set") // Display "Not set" if no key is found
+    } catch (err) {
+      console.error("Failed to fetch security key:", err)
+      setError("Failed to load current security key.")
+      toast.error("Failed to load current security key.")
+    } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSetSecurityKey = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setSuccess(null)
+    setIsSaving(true)
+
+    if (newKey !== confirmNewKey) {
+      setError("New security key and confirmation do not match.")
+      setIsSaving(false)
+      return
+    }
+    if (!newKey) {
+      setError("New security key cannot be empty.")
+      setIsSaving(false)
       return
     }
 
-    // First, set the security key if it's not already set or if it's being updated
-    if (!isKeySet || securityKey) { // Only attempt to set if not set, or if user provided a new key
-      const keyResult = await setAdminSecurityKey(securityKey);
-      if (!keyResult.success) {
-        toast.error(keyResult.message || 'Failed to set admin security key.');
-        setLoading(false);
-        return;
+    try {
+      const result = await setSecurityKey(newKey)
+      if (result.success) {
+        setSuccess("Admin security key updated successfully!")
+        toast.success("Admin security key updated!")
+        setNewKey("")
+        setConfirmNewKey("")
+        fetchSecurityKey() // Refresh the displayed key
+      } else {
+        setError(result.message)
+        toast.error(result.message)
       }
-      setIsKeySet(true); // Mark key as set
+    } catch (err) {
+      console.error("Set security key error:", err)
+      setError("An unexpected error occurred while updating the security key.")
+      toast.error("An unexpected error occurred.")
+    } finally {
+      setIsSaving(false)
     }
+  }
 
-    // Then, create the admin account
-    const adminResult = await createAdmin({ name, email, password, isActive: true });
-    if (adminResult.success) {
-      toast.success('Admin account and security key set up successfully!');
-      router.push('/admin/login');
-    } else {
-      toast.error(adminResult.message || 'Failed to create admin account.');
-    }
-    setLoading(false);
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-100 dark:bg-gray-900">
+        <PageHeaderWithBack title="Admin Setup" backHref="/admin/dashboard" />
+        <main className="flex-1 p-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Admin Security Key</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="h-6 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    )
+  }
+
+  if (error && !success) { // Only show error if no success message is present
+    return (
+      <div className="flex flex-col min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900 text-red-500">
+        <p>{error}</p>
+        <Button onClick={fetchSecurityKey} className="mt-4">
+          Retry
+        </Button>
+      </div>
+    )
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 dark:bg-gray-950">
-      <AuthCard
-        title="Admin Setup for DeliverIQ"
-        description="Create your first admin account and set the global security key."
-        footerText="Already set up?"
-        footerLinkText="Admin Login"
-        footerLinkHref="/admin/login"
-      >
-        <form onSubmit={handleSetup} className="space-y-4">
-          <div>
-            <Label htmlFor="name">Admin Name</Label>
-            <Input
-              id="name"
-              type="text"
-              placeholder="Admin User"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="email">Admin Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="admin@deliveriq.com"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="confirm-password">Confirm Password</Label>
-            <Input
-              id="confirm-password"
-              type="password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="security-key">Admin Security Key</Label>
-            <Input
-              id="security-key"
-              type="password"
-              placeholder={isKeySet ? "Key already set (leave blank to keep)" : "Set a new security key"}
-              required={!isKeySet} // Required only if key is not set
-              value={securityKey}
-              onChange={(e) => setSecurityKey(e.target.value)}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              This key is required for all admin logins. Default: `DELIVERIQ_ADMIN_2024`
-            </p>
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Setting Up...' : 'Complete Setup'}
-          </Button>
-        </form>
-      </AuthCard>
+    <div className="flex flex-col min-h-screen bg-gray-100 dark:bg-gray-900">
+      <PageHeaderWithBack title="Admin Setup" backHref="/admin/dashboard" />
+      <main className="flex-1 p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Admin Security Key</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4">
+              <Label>Current Key:</Label>
+              <p className="font-bold text-lg">{currentKey}</p>
+            </div>
+            <form onSubmit={handleSetSecurityKey} className="space-y-4">
+              {error && <StatusAlert type="error" message={error} />}
+              {success && <StatusAlert type="success" message={success} />}
+              <div>
+                <Label htmlFor="new-key">New Security Key</Label>
+                <Input
+                  id="new-key"
+                  type="password"
+                  value={newKey}
+                  onChange={(e) => setNewKey(e.target.value)}
+                  placeholder="Enter new security key"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="confirm-new-key">Confirm New Security Key</Label>
+                <Input
+                  id="confirm-new-key"
+                  type="password"
+                  value={confirmNewKey}
+                  onChange={(e) => setConfirmNewKey(e.target.value)}
+                  placeholder="Confirm new security key"
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isSaving}>
+                {isSaving ? "Saving..." : "Set New Key"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </main>
     </div>
   )
 }
