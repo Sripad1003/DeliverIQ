@@ -1,30 +1,49 @@
-# Trolla project
+# DeliverIQ
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+DeliverIQ is a project designed to automatically synchronize your deployed chats on v0.dev with this GitHub repository. This ensures that any changes made to your deployed app are seamlessly pushed to the repository, allowing you to focus on building and deploying your application without worrying about version control.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/sripad1003s-projects/v0-deliver-iq)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/GOXnIHkKZbk)
+## Features
 
-## Overview
+- **Automatic Synchronization**: Any changes made to your deployed app on v0.dev will be automatically pushed to this repository.
+- **Seamless Development**: Continue building and deploying your app without the hassle of manual updates.
+- **Real-time Updates**: Stay up-to-date with the latest changes in your application directly from the repository.
 
-This repository will stay  in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+## Technology Stack
 
-## Deployment
+- **TypeScript**: 94.8%
+- **CSS**: 5.0%
+- **JavaScript**: 0.2%
 
-Your project is live at:
+## Installation
 
-**[https://vercel.com/sripad1003s-projects/v0-deliver-iq](https://vercel.com/sripad1003s-projects/v0-deliver-iq)**
+To get started with DeliverIQ, follow these steps:
 
-## Build your app
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Sripad1003/DeliverIQ.git
+   ```
+2. Navigate to the project directory:
+   ```bash
+   cd DeliverIQ
+   ```
+3. Install the dependencies:
+   ```bash
+   npm install
+   ```
 
-Continue building your app on:
+## Usage
 
-**[https://v0.dev/chat/projects/GOXnIHkKZbk](https://v0.dev/chat/projects/GOXnIHkKZbk)**
+After installation, you can deploy your app to v0.dev. DeliverIQ will automatically handle synchronization with this repository.
 
-## How It Works
+## License
 
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+No license information is provided.
+
+## Contributing
+
+Contributions are welcome! Please fork the repository and submit a pull request for any enhancements or bug fixes.
+
+## Contact
+
+For any inquiries or issues, please contact the repository owner.
+
