@@ -14,36 +14,36 @@ DeliverIQ is a comprehensive logistics and delivery management platform.
 
 ### 1. Clone the repository
 
-\`\`\`bash
+```bash
 git clone https://github.com/your-username/DeliverIQ.git
 cd DeliverIQ
-\`\`\`
+```
 
 ### 2. Install dependencies
 
-\`\`\`bash
+```bash
 npm install
 # or
 yarn install
-\`\`\`
+```
 
 ### 3. Set up Environment Variables
 
 Create a `.env.local` file in the root of your project and add your MongoDB connection string:
 
-\`\`\`
-MONGODB_URI=mongodb+srv://chiliverysripad:Sripad1003@cluster0.hmzrnnp.mongodb.net/
-\`\`\`
+```
+MONGODB_URI=mongodb+srv://<your_username>:<pass>@cluster0.hmzrnnp.mongodb.net/
+```
 
 Replace the placeholder with your actual MongoDB connection string.
 
 ### 4. Run the development server
 
-\`\`\`bash
+```bash
 npm run dev
 # or
 yarn dev
-\`\`\`
+```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
