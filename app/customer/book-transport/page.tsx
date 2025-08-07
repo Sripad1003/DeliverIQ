@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { PlusCircle, MinusCircle, Package, MapPin, Truck, DollarSign, CreditCard } from "lucide-react"
 import { StatusAlert } from "../../../components/ui/status-alert" // Import StatusAlert
 import { PageHeaderWithBack } from "../../../components/layout/page-header-with-back" // Import PageHeaderWithBack
-import { getCustomerSession, createOrder,type CustomerSession, type Item, type Order } from "../../../lib/app-data"
+import { getCustomerSession, createOrder, type CustomerSession, type Item, type Order } from "../../../lib/app-data"
 import { suggestVehicles, calculateDistance, type VehicleType } from "../../../lib/vehicle-logic"
 
 
@@ -48,23 +48,23 @@ export default function BookTransportPage() {
     setItems(newItems)
   }
 
-const handleItemChange = (index: number, field: keyof Item, value: string | number) => {
-  const newItems = [...items];
+  const handleItemChange = (index: number, field: keyof Item, value: string | number) => {
+    const newItems = [...items];
 
-  if (["quantity", "weight", "length", "width", "height"].includes(field)) {
-    newItems[index] = {
-      ...newItems[index],
-      [field]: typeof value === "string" ? parseFloat(value) || 0 : value,
-    };
-  } else {
-    newItems[index] = {
-      ...newItems[index],
-      [field]: value,
-    };
-  }
+    if (["quantity", "weight", "length", "width", "height"].includes(field)) {
+      newItems[index] = {
+        ...newItems[index],
+        [field]: typeof value === "string" ? parseFloat(value) || 0 : value,
+      };
+    } else {
+      newItems[index] = {
+        ...newItems[index],
+        [field]: value,
+      };
+    }
 
-  setItems(newItems);
-};
+    setItems(newItems);
+  };
 
 
 
@@ -328,15 +328,15 @@ const handleItemChange = (index: number, field: keyof Item, value: string | numb
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a suggested vehicle" />
+                      <SelectContent>
+                        {suggestions.map((sug) => (
+                          <SelectItem key={sug.type} value={sug.type}>
+                            {sug.type.charAt(0).toUpperCase() + sug.type.slice(1)} - ₹{sug.estimatedPrice.toFixed(2)} (
+                            {sug.description})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                     </SelectTrigger>
-                    <SelectContent>
-                      {suggestions.map((sug) => (
-                        <SelectItem key={sug.type} value={sug.type}>
-                          {sug.type.charAt(0).toUpperCase() + sug.type.slice(1)} - ₹{sug.estimatedPrice.toFixed(2)} (
-                          {sug.description})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
                   </Select>
                   {selectedVehicle && (
                     <div className="flex items-center justify-between p-3 bg-blue-50 rounded-md border border-blue-200">

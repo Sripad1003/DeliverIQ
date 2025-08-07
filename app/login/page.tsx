@@ -40,11 +40,11 @@ export default function LoginPage() {
 
         if (customer && (await verifyPassword(password, customer.passwordHash))) {
           // Update last login time
-          const updatedCustomers = customers.map(c => 
+          const updatedCustomers = customers.map(c =>
             c.id === customer.id ? { ...c, lastLoginAt: new Date().toISOString() } : c
           )
           await SecureStorage.storeCustomers(updatedCustomers)
-          
+
           loginCustomer({
             id: customer.id,
             email: customer.email,
@@ -61,11 +61,11 @@ export default function LoginPage() {
 
         if (driver && (await verifyPassword(password, driver.passwordHash))) {
           // Update last login time
-          const updatedDrivers = drivers.map(d => 
+          const updatedDrivers = drivers.map(d =>
             d.id === driver.id ? { ...d, lastLoginAt: new Date().toISOString() } : d
           )
           await SecureStorage.storeDrivers(updatedDrivers)
-          
+
           loginDriver({
             id: driver.id,
             email: driver.email,
@@ -122,11 +122,11 @@ export default function LoginPage() {
               <Select value={role} onValueChange={setRole} required>
                 <SelectTrigger>
                   <SelectValue placeholder="Select your role" />
+                  <SelectContent>
+                    <SelectItem value="customer">Customer</SelectItem>
+                    <SelectItem value="driver">Driver</SelectItem>
+                  </SelectContent>
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="customer">Customer</SelectItem>
-                  <SelectItem value="driver">Driver</SelectItem>
-                </SelectContent>
               </Select>
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>

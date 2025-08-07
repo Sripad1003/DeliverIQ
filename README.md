@@ -57,12 +57,20 @@ Upon first load, the application will seed the database with the following demo 
 - Admin Security Key: `DELIVERIQ_ADMIN_2024`
 
 **Customer:**
-- Email: `customer@deliveriq.com`
-- Password: `customer123`
+- Email: `john@deliveriq.com`
+- Password: `password123`
+- Email: `jane@deliveriq.com`
+- Password: `password123`
 
 **Driver:**
-- Email: `driver@deliveriq.com`
-- Password: `driver123`
+- Email: `amit@example.com`
+- Password: `password123`
+- vehicle: `van`
+
+- Email: `raj@example.com`
+- Password: `password123`
+- vehicle: `truck`
+
 
 ### Project Structure
 
