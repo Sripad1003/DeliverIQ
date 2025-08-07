@@ -1,15 +1,15 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
+import { Button } from "../../../components/ui/button"
+import { Badge } from "../../../components/ui/badge"
 import { Users, Truck, Package, TrendingUp, AlertCircle, CheckCircle, Shield, Key, Database } from 'lucide-react'
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
-import { StatusAlert } from "@/components/ui/status-alert"
-import { DashboardHeader } from "@/components/layout/dashboard-header"
-import { getCustomers, getDrivers, getOrders, OrderStatus, Customer, Driver, Order } from "@/lib/app-data"
+import { StatusAlert } from "../../../components/ui/status-alert"
+import { DashboardHeader } from "../../../components/layout/dashboard-header"
+import { getCustomers, getDrivers, getOrders, OrderStatus, Customer, Driver, Order } from "../../../lib/app-data"
 
 // Helper for comparing arrays of objects by their stringified content
 const areArraysOfObjectsEqual = (arr1: any[], arr2: any[]) => {

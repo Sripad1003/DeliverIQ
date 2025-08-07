@@ -1,14 +1,14 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
+import { Button } from "../../../components/ui/button"
+import { Badge } from "../../../components/ui/badge"
+import { Input } from "../../../components/ui/input"
+import { Textarea } from "../../../components/ui/textarea"
 import { Package, Search, Clock, CheckCircle, XCircle, Truck, AlertTriangle } from 'lucide-react'
 import { useEffect, useState } from "react"
-import { DashboardHeader } from "@/components/layout/dashboard-header"
-import { getOrders, getCustomers, getDrivers, Order, OrderStatus, Customer, Driver } from "@/lib/app-data"
+import { DashboardHeader } from "../../../components/layout/dashboard-header"
+import { getOrders, getCustomers, getDrivers, Order, OrderStatus, Customer, Driver } from "../../../lib/app-data"
 
 export default function OrderManagement() {
   const [orders, setOrders] = useState<Order[]>([])

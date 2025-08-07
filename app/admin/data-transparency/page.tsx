@@ -1,12 +1,12 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
+import { Button } from "../../../components/ui/button"
+import { Badge } from "../../../components/ui/badge"
 import { Database, Shield, Key, Eye, EyeOff, Lock, Unlock } from 'lucide-react'
 import { useEffect, useState } from "react"
-import { DashboardHeader } from "@/components/layout/dashboard-header"
-import { SecureStorage } from "@/lib/server-storage"
+import { DashboardHeader } from "../../../components/layout/dashboard-header"
+import { SecureStorage } from "../../../lib/server-storage"
 
 export default function DataTransparency() {
   const [storageMetadata, setStorageMetadata] = useState<any>(null)

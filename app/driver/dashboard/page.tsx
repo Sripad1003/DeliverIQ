@@ -1,24 +1,23 @@
 "use client"
 
 import Link from "next/link"
-
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
+import { Button } from "../../../components/ui/button"
+import { Badge } from "../../../components/ui/badge"
 import { Car, Star, DollarSign, Clock, MapPin, Package, Calendar } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { DashboardHeader } from "@/components/layout/dashboard-header" // Import DashboardHeader
-import { getDriverSession, getOrders, updateOrder, type Order, OrderStatus } from "@/lib/app-data"
+import { DashboardHeader } from "../../../components/layout/dashboard-header" // Import DashboardHeader
+import { getDriverSession, getOrders, updateOrder, type Order, OrderStatus, type DriverSession } from "../../../lib/app-data" // Ensure DriverSession is imported
 
 export default function DriverDashboard() {
   const router = useRouter()
-  const [driverSession, setDriverSession] = useState(null)
+  const [driverSession, setDriverSession] = useState<DriverSession | null>(null) // Explicit type for driverSession
   const [availableJobs, setAvailableJobs] = useState<Order[]>([])
   const [activeTrip, setActiveTrip] = useState<Order | null>(null)
   const [tripHistory, setTripHistory] = useState<Order[]>([])
 
-  const refreshOrders = () => {
+  const refreshOrders = async () => { // Make this function async
     const session = getDriverSession()
     if (!session) {
       router.push("/login")
@@ -26,7 +25,7 @@ export default function DriverDashboard() {
     }
     setDriverSession(session)
 
-    const allOrders = getOrders()
+    const allOrders = await getOrders() // Use await here
     const driverVehicleType = session.vehicleType
 
     // Filter available jobs: pending, not assigned, and matching vehicle type
@@ -55,9 +54,9 @@ export default function DriverDashboard() {
     refreshOrders()
   }, [router])
 
-  const handleAcceptJob = (orderId: string) => {
+  const handleAcceptJob = async (orderId: string) => { // Make this function async
     if (!driverSession) return
-    const orders = getOrders()
+    const orders = await getOrders() // Use await here
     const orderToUpdate = orders.find((order) => order.id === orderId)
 
     if (orderToUpdate) {
@@ -67,14 +66,14 @@ export default function DriverDashboard() {
         status: OrderStatus.accepted,
         acceptedAt: new Date().toISOString(),
       }
-      updateOrder(updatedOrder)
+      await updateOrder(updatedOrder) // Use await here
       refreshOrders() // Refresh state after update
     }
   }
 
-  const handleMarkInTransit = (orderId: string) => {
+  const handleMarkInTransit = async (orderId: string) => { // Make this function async
     if (!driverSession) return
-    const orders = getOrders()
+    const orders = await getOrders() // Use await here
     const orderToUpdate = orders.find((order) => order.id === orderId)
 
     if (orderToUpdate) {
@@ -84,14 +83,14 @@ export default function DriverDashboard() {
         inTransitAt: new Date().toISOString(),
         driverLocation: orderToUpdate.pickupLocation, // Set initial driver location
       }
-      updateOrder(updatedOrder)
+      await updateOrder(updatedOrder) // Use await here
       refreshOrders() // Refresh state after update
     }
   }
 
-  const handleCompleteTrip = (orderId: string) => {
+  const handleCompleteTrip = async (orderId: string) => { // Make this function async
     if (!driverSession) return
-    const orders = getOrders()
+    const orders = await getOrders() // Use await here
     const orderToUpdate = orders.find((order) => order.id === orderId)
 
     if (orderToUpdate) {
@@ -101,7 +100,7 @@ export default function DriverDashboard() {
         completedAt: new Date().toISOString(),
         driverLocation: orderToUpdate.deliveryLocation, // Final location
       }
-      updateOrder(updatedOrder)
+      await updateOrder(updatedOrder) // Use await here
       refreshOrders() // Refresh state after update
     }
   }
@@ -270,7 +269,7 @@ export default function DriverDashboard() {
                         <p className="font-semibold">₹{trip.price.toFixed(2)}</p>
                         <div className="flex items-center mt-1">
                           <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                          <span className="text-sm ml-1">{driverSession?.rating?.toFixed(1) || "N/A"}</span>
+                          <span className="text-sm ml-1">{trip.rating?.toFixed(1) || "N/A"}</span>
                         </div>
                       </div>
                     </div>

@@ -3,15 +3,15 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Button } from "../../../components/ui/button"
+import { Input } from "../../../components/ui/input"
+import { Label } from "../../../components/ui/label"
 import { Shield } from "lucide-react"
-import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
-import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
-import { AuthCard } from "@/components/auth/auth-card" // Import AuthCard
-import { initializeAdminData, getAdminData, getSecurityKeyHash } from "@/lib/admin-data"
-import { verifyPassword, verifySecurityKey } from "@/lib/security"
+import { StatusAlert } from "../../../components/ui/status-alert" // Import StatusAlert
+import { PageHeaderWithBack } from "../../../components/layout/page-header-with-back" // Import PageHeaderWithBack
+import { AuthCard } from "../../../components/auth/auth-card" // Import AuthCard
+import { initializeAdminData, getAdminData, getSecurityKeyHash } from "../../../lib/admin-data"
+import { verifyPassword, verifySecurityKey } from "../../../lib/security"
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("")

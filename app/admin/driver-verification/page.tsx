@@ -1,13 +1,13 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
+import { Button } from "../../../components/ui/button"
+import { Badge } from "../../../components/ui/badge"
+import { Input } from "../../../components/ui/input"
 import { Truck, Search, CheckCircle, XCircle, Clock, FileText } from 'lucide-react'
 import { useEffect, useState } from "react"
-import { DashboardHeader } from "@/components/layout/dashboard-header"
-import { getDrivers, Driver } from "@/lib/app-data"
+import { DashboardHeader } from "../../../components/layout/dashboard-header"
+import { getDrivers, Driver } from "../../../lib/app-data"
 
 export default function DriverVerification() {
   const [drivers, setDrivers] = useState<Driver[]>([])

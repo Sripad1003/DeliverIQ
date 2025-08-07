@@ -1,41 +1,31 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
+import { Button } from "../../../components/ui/button"
 import { Package, Truck, Clock, MapPin, User, Calendar, DollarSign, Star, CreditCard } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import {
-  getCustomerSession,
-  getOrders,
-  getDrivers,
-  type Order,
-  type Driver,
-  type OrderStatus,
-  type PaymentStatus,
-  updateOrder,
-  cancelOrder,
-} from "@/lib/app-data"
-import { Badge } from "@/components/ui/badge"
-import { DashboardHeader } from "@/components/layout/dashboard-header" // Import DashboardHeader
+import { getCustomerSession, getOrders, getDrivers, type Order, type Driver, type OrderStatus, type PaymentStatus, type CustomerSession, updateOrder, cancelOrder } from "../../../lib/app-data"
+import { Badge } from "../../../components/ui/badge"
+import { DashboardHeader } from "../../../components/layout/dashboard-header" // Import DashboardHeader
 
 export default function CustomerDashboard() {
   const router = useRouter()
-  const [customerSession, setCustomerSession] = useState(null)
+  const [customerSession, setCustomerSession] = useState<null | CustomerSession>(null)
   const [activeOrders, setActiveOrders] = useState<Order[]>([])
   const [completedOrders, setCompletedOrders] = useState<Order[]>([])
   const [drivers, setDrivers] = useState<Driver[]>([])
 
-  const refreshOrders = () => {
-    const session = getCustomerSession()
+  const refreshOrders = async () => {
+    const session = await getCustomerSession() // Await here
     if (!session) {
       router.push("/login")
       return
     }
     setCustomerSession(session)
 
-    const allOrders = getOrders()
+    const allOrders = await getOrders() // Await here
     const customerOrders = allOrders.filter((order) => order.customerId === session.id)
     setActiveOrders(
       customerOrders.filter(
@@ -44,7 +34,8 @@ export default function CustomerDashboard() {
     )
     setCompletedOrders(customerOrders.filter((order) => order.status === "completed" || order.status === "cancelled")) // Include cancelled in completed for history
 
-    setDrivers(getDrivers()) // Load all drivers to display driver info
+    const allDrivers = await getDrivers() // Await here
+    setDrivers(allDrivers) // Load all drivers to display driver info
   }
 
   useEffect(() => {
@@ -89,23 +80,23 @@ export default function CustomerDashboard() {
     }
   }
 
-  const handlePayNow = (orderId: string) => {
+  const handlePayNow = async (orderId: string) => {
     // Placeholder for payment logic
     alert(`Initiating payment for Order ID: ${orderId}. (Not implemented yet)`)
     // In a real app, this would redirect to a payment gateway or open a modal
     // For now, let's simulate a successful payment for demo purposes
-    const orders = getOrders()
+    const orders = await getOrders() // Await here
     const orderToUpdate = orders.find((order) => order.id === orderId)
     if (orderToUpdate) {
       const updatedOrder = { ...orderToUpdate, paymentStatus: "paid" as PaymentStatus }
-      updateOrder(updatedOrder)
+      await updateOrder(updatedOrder) // Await here
       refreshOrders() // Refresh the dashboard to reflect payment status
     }
   }
 
-  const handleCancelOrder = (orderId: string) => {
+  const handleCancelOrder = async (orderId: string) => {
     if (window.confirm("Are you sure you want to cancel this order? This action cannot be undone.")) {
-      const cancelled = cancelOrder(orderId)
+      const cancelled = await cancelOrder(orderId) // Await here
       if (cancelled) {
         alert("Order cancelled successfully!")
         refreshOrders() // Refresh the dashboard to reflect the cancellation

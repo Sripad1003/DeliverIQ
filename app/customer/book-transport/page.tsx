@@ -2,28 +2,28 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "../../../components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
+import { Input } from "../../../components/ui/input"
+import { Label } from "../../../components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
 import { PlusCircle, MinusCircle, Package, MapPin, Truck, DollarSign, CreditCard } from "lucide-react"
-import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
-import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
-import { getCustomerSession, createOrder, type Item, type Order } from "@/lib/app-data"
-import { suggestVehicles, calculateDistance, type VehicleType } from "@/lib/vehicle-logic"
+import { StatusAlert } from "../../../components/ui/status-alert" // Import StatusAlert
+import { PageHeaderWithBack } from "../../../components/layout/page-header-with-back" // Import PageHeaderWithBack
+import { getCustomerSession, createOrder,type CustomerSession, type Item, type Order } from "../../../lib/app-data"
+import { suggestVehicles, calculateDistance, type VehicleType } from "../../../lib/vehicle-logic"
+
+
 
 export default function BookTransportPage() {
   const router = useRouter()
-  const [customerSession, setCustomerSession] = useState(null)
+  const [customerSession, setCustomerSession] = useState<CustomerSession | null>(null)
   const [pickupLocation, setPickupLocation] = useState("")
   const [deliveryLocation, setDeliveryLocation] = useState("")
   const [pickupDate, setPickupDate] = useState("")
   const [pickupTime, setPickupTime] = useState("")
   const [items, setItems] = useState<Item[]>([{ name: "", quantity: 1, weight: 0, length: 0, width: 0, height: 0 }])
-  const [suggestions, setSuggestions] = useState<{ type: VehicleType; estimatedPrice: number; description: string }[]>(
-    [],
-  )
+  const [suggestions, setSuggestions] = useState<{ type: VehicleType; estimatedPrice: number; description: string }[]>([])
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleType | null>(null)
   const [estimatedDistance, setEstimatedDistance] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
@@ -48,38 +48,30 @@ export default function BookTransportPage() {
     setItems(newItems)
   }
 
-  const handleItemChange = (index: number, field: keyof Item, value: string | number) => {
-    const newItems = [...items]
-    // Ensure numeric fields are parsed as numbers
-    if (typeof value === "string" && ["quantity", "weight", "length", "width", "height"].includes(field)) {
-      newItems[index][field] = Number.parseFloat(value as string) || 0
-    } else {
-      newItems[index][field] = value as any
-    }
-    setItems(newItems)
+const handleItemChange = (index: number, field: keyof Item, value: string | number) => {
+  const newItems = [...items];
+
+  if (["quantity", "weight", "length", "width", "height"].includes(field)) {
+    newItems[index] = {
+      ...newItems[index],
+      [field]: typeof value === "string" ? parseFloat(value) || 0 : value,
+    };
+  } else {
+    newItems[index] = {
+      ...newItems[index],
+      [field]: value,
+    };
   }
+
+  setItems(newItems);
+};
+
+
 
   const handleGetSuggestions = () => {
     setMessage({ type: "", text: "" })
-    if (
-      !pickupLocation ||
-      !deliveryLocation ||
-      !pickupDate ||
-      !pickupTime ||
-      items.some(
-        (item) =>
-          !item.name ||
-          item.quantity <= 0 ||
-          item.weight <= 0 ||
-          item.length <= 0 ||
-          item.width <= 0 ||
-          item.height <= 0,
-      )
-    ) {
-      setMessage({
-        type: "error",
-        text: "Please fill in all required fields for locations, date, time, and all item details.",
-      })
+    if (!pickupLocation || !deliveryLocation || !pickupDate || !pickupTime || items.some(item => !item.name || item.quantity <= 0 || item.weight <= 0 || item.length <= 0 || item.width <= 0 || item.height <= 0)) {
+      setMessage({ type: "error", text: "Please fill in all required fields for locations, date, time, and all item details." })
       return
     }
 
@@ -129,13 +121,9 @@ export default function BookTransportPage() {
         price: selectedSuggestion.estimatedPrice,
       }
       createOrder(newOrder)
-      setMessage({
-        type: "success",
-        text: "Your booking has been placed successfully! Proceed to payment.",
-      })
+      setMessage({ type: "success", text: "Your booking has been placed successfully! Proceed to payment." })
       setBookingConfirmed(true) // Set booking as confirmed
       setIsLoading(false)
-      // No immediate redirect, allow user to proceed to payment
     } catch (error) {
       console.error("Failed to create order:", error)
       setMessage({ type: "error", text: "Failed to place booking. Please try again." })
@@ -144,9 +132,7 @@ export default function BookTransportPage() {
   }
 
   const handleProceedToPayment = () => {
-    // This is a placeholder for future payment integration
     setMessage({ type: "success", text: "Redirecting to payment gateway... (Not implemented yet)" })
-    // In a real app, you'd redirect to a payment page or open a payment modal
     setTimeout(() => router.push("/customer/dashboard"), 3000) // Redirect to dashboard after a delay
   }
 
@@ -168,6 +154,7 @@ export default function BookTransportPage() {
 
         {!bookingConfirmed ? (
           <>
+            {/* Route Details Card */}
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -220,6 +207,7 @@ export default function BookTransportPage() {
               </CardContent>
             </Card>
 
+            {/* Item Details Card */}
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -230,10 +218,7 @@ export default function BookTransportPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {items.map((item, index) => (
-                  <div
-                    key={index}
-                    className="border p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative"
-                  >
+                  <div key={index} className="border p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative">
                     <h4 className="col-span-full font-semibold text-sm mb-2">Item {index + 1}</h4>
                     <div className="space-y-2">
                       <Label htmlFor={`itemName-${index}`}>Item Name</Label>
@@ -339,7 +324,7 @@ export default function BookTransportPage() {
                 <CardContent className="space-y-4">
                   <Select
                     value={selectedVehicle || ""}
-                    onValueChange={(value: VehicleType) => setSelectedVehicle(value)}
+                    onValueChange={(value: string) => setSelectedVehicle(value as VehicleType)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a suggested vehicle" />

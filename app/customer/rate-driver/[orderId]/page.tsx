@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../components/ui/card"
+import { Button } from "../../../../components/ui/button"
+import { Textarea } from "../../../../components/ui/textarea"
+import { Label } from "../../../../components/ui/label"
 import { Star } from "lucide-react"
-import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
-import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
-import { getOrderById, updateOrder, updateDriverRating, getCustomerSession, type Order } from "@/lib/app-data"
+import { StatusAlert } from "../../../../components/ui/status-alert" // Import StatusAlert
+import { PageHeaderWithBack } from "../../../../components/layout/page-header-with-back" // Import PageHeaderWithBack
+import { getOrderById, updateOrder, updateDriverRating, getCustomerSession, type Order } from "../../../../lib/app-data"
 
 export default function RateDriverPage() {
   const router = useRouter()
@@ -24,25 +24,34 @@ export default function RateDriverPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const session = getCustomerSession()
-    if (!session) {
-      router.push("/login")
-      return
+    const fetchData = async () => {
+      const session = getCustomerSession()
+      if (!session) {
+        router.push("/login")
+        return
+      }
+
+      try {
+        const fetchedOrder = await getOrderById(orderId) // Await here
+        if (fetchedOrder && fetchedOrder.customerId === session.id && fetchedOrder.status === "completed") {
+          setOrder(fetchedOrder)
+          if (fetchedOrder.rating) {
+            setRating(fetchedOrder.rating)
+          }
+        } else {
+          setMessage({ type: "error", text: "Order not found, not completed, or you do not have permission to rate it." })
+        }
+      } catch (error) {
+        setMessage({ type: "error", text: "Failed to fetch order details." })
+      } finally {
+        setLoading(false)
+      }
     }
 
-    const fetchedOrder = getOrderById(orderId)
-    if (fetchedOrder && fetchedOrder.customerId === session.id && fetchedOrder.status === "completed") {
-      setOrder(fetchedOrder)
-      if (fetchedOrder.rating) {
-        setRating(fetchedOrder.rating)
-      }
-    } else {
-      setMessage({ type: "error", text: "Order not found, not completed, or you do not have permission to rate it." })
-    }
-    setLoading(false)
+    fetchData()
   }, [orderId, router])
 
-  const handleRatingSubmit = () => {
+  const handleRatingSubmit = async () => {
     setMessage({ type: "", text: "" })
     if (!order || !order.driverId) {
       setMessage({ type: "error", text: "Cannot rate this order. Driver information is missing." })
@@ -56,10 +65,10 @@ export default function RateDriverPage() {
     try {
       // Update order with rating
       const updatedOrder = { ...order, rating: rating }
-      updateOrder(updatedOrder)
+      await updateOrder(updatedOrder) // Await if updateOrder returns a promise
 
       // Update driver's average rating
-      updateDriverRating(order.driverId, rating)
+      await updateDriverRating(order.driverId, rating) // Await if updateDriverRating returns a promise
 
       setMessage({ type: "success", text: "Thank you for your feedback! Rating submitted successfully." })
       setTimeout(() => router.push("/customer/dashboard"), 2000)

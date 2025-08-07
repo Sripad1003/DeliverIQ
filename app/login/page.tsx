@@ -4,16 +4,17 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "../../components/ui/button"
+import { Input } from "../../components/ui/input"
+import { Label } from "../../components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select"
 import { Truck } from 'lucide-react'
-import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
-import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
-import { AuthCard } from "@/components/auth/auth-card" // Import AuthCard
-import { initializeAppData, getCustomers, getDrivers, loginCustomer, loginDriver, SecureStorage } from "@/lib/app-data"
-import { verifyPassword } from "@/lib/security"
+import { StatusAlert } from "../../components/ui/status-alert" // Import StatusAlert
+import { PageHeaderWithBack } from "../../components/layout/page-header-with-back" // Import PageHeaderWithBack
+import { AuthCard } from "../../components/auth/auth-card" // Import AuthCard
+import { initializeAppData, getCustomers, getDrivers, loginCustomer, loginDriver } from "../../lib/app-data"
+import { SecureStorage } from "../../lib/server-storage"
+import { verifyPassword } from "../../lib/security"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")

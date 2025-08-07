@@ -217,13 +217,25 @@ export async function getCustomers(): Promise<Customer[]> {
   return await SecureStorage.getCustomers()
 }
 
+export const enum CustomerStatus {
+  active = "active",
+  suspended = "suspended",
+  banned = "banned",
+}
+
+export const enum DriverStatus {
+  active = "active",
+  suspended = "suspended",
+  banned = "banned",
+}
+
 export async function createCustomer(customerData: {
   name: string
   email: string
   password: string
   phone: string
   address: string
-}): Promise<Customer> {
+}): Promise<Customer | null> {
   const passwordHash = await hashPassword(customerData.password)
   
   const newCustomer: Customer = {

@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../components/ui/card"
+import { Button } from "../../../../components/ui/button"
+import { Badge } from "../../../../components/ui/badge"
 import { MapPin, Truck, Package, User, Calendar, DollarSign, Clock, CircleDot, CircleCheck, Star } from "lucide-react"
-import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
-import { getOrderById, getDrivers, getCurrentUserSession, type Order, type Driver, OrderStatus } from "@/lib/app-data"
+import { PageHeaderWithBack } from "../../../../components/layout/page-header-with-back" // Import PageHeaderWithBack
+import { getOrderById, getDrivers, getCurrentUserSession, type Order, type Driver, OrderStatus } from "../../../../lib/app-data"
 
 export default function TrackOrderPage() {
   const router = useRouter()
@@ -21,39 +21,48 @@ export default function TrackOrderPage() {
   const [dashboardLink, setDashboardLink] = useState("/login") // Default to login
 
   useEffect(() => {
-    const session = getCurrentUserSession() // Check for any session (customer or driver)
-    if (!session) {
-      router.push("/login")
-      return
-    }
-
-    // Set the correct dashboard link based on the user's role
-    if (session.role === "customer") {
-      setDashboardLink("/customer/dashboard")
-    } else if (session.role === "driver") {
-      setDashboardLink("/driver/dashboard")
-    }
-
-    const fetchedOrder = getOrderById(orderId)
-    if (fetchedOrder) {
-      // Check if the logged-in user is either the customer who placed the order
-      // or the driver assigned to the order.
-      if (
-        (session.role === "customer" && fetchedOrder.customerId === session.id) ||
-        (session.role === "driver" && fetchedOrder.driverId === session.id)
-      ) {
-        setOrder(fetchedOrder)
-        if (fetchedOrder.driverId) {
-          const drivers = getDrivers()
-          setDriverInfo(drivers.find((d) => d.id === fetchedOrder.driverId) || null)
-        }
-      } else {
-        setError("Order not found or you do not have permission to view it.")
+    const fetchData = async () => {
+      const session = getCurrentUserSession() // Check for any session (customer or driver)
+      if (!session) {
+        router.push("/login")
+        return
       }
-    } else {
-      setError("Order not found.")
+
+      // Set the correct dashboard link based on the user's role
+      if (session.role === "customer") {
+        setDashboardLink("/customer/dashboard")
+      } else if (session.role === "driver") {
+        setDashboardLink("/driver/dashboard")
+      }
+
+      try {
+        const fetchedOrder = await getOrderById(orderId) // Use await here
+        if (fetchedOrder) {
+          // Check if the logged-in user is either the customer who placed the order
+          // or the driver assigned to the order.
+          if (
+            (session.role === "customer" && fetchedOrder.customerId === session.id) ||
+            (session.role === "driver" && fetchedOrder.driverId === session.id)
+          ) {
+            setOrder(fetchedOrder)
+            if (fetchedOrder.driverId) {
+              const drivers = await getDrivers() // Use await here
+              setDriverInfo(drivers.find((d) => d.id === fetchedOrder.driverId) || null)
+            }
+          } else {
+            setError("Order not found or you do not have permission to view it.")
+          }
+        } else {
+          setError("Order not found.")
+        }
+      } catch (err) {
+        setError("Failed to fetch order details.")
+      } finally {
+        setLoading(false)
+      }
     }
-    setLoading(false)
+
+    fetchData()
   }, [orderId, router])
 
   if (loading) {

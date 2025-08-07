@@ -5,16 +5,16 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from "../../components/ui/button"
+import { Input } from "../../components/ui/input"
+import { Label } from "../../components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select"
+import { Textarea } from "../../components/ui/textarea"
 import { Truck, User, Car, Shield } from "lucide-react"
-import { StatusAlert } from "@/components/ui/status-alert" // Import StatusAlert
-import { PageHeaderWithBack } from "@/components/layout/page-header-with-back" // Import PageHeaderWithBack
-import { AuthCard } from "@/components/auth/auth-card" // Import AuthCard
-import { initializeAppData, createCustomer, createDriver, loginCustomer, loginDriver } from "@/lib/app-data"
+import { StatusAlert } from "../../components/ui/status-alert" // Import StatusAlert
+import { PageHeaderWithBack } from "../../components/layout/page-header-with-back" // Import PageHeaderWithBack
+import { AuthCard } from "../../components/auth/auth-card" // Import AuthCard
+import { initializeAppData, createCustomer, createDriver, loginCustomer, loginDriver } from "../../lib/app-data"
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -53,63 +53,75 @@ export default function SignupPage() {
     setMessage({ type: "", text: "" }) // Clear previous messages
 
     if (formData.password !== formData.confirmPassword) {
-      setMessage({ type: "error", text: "Passwords don't match" })
-      return
+        setMessage({ type: "error", text: "Passwords don't match" })
+        return
     }
 
     if (formData.password.length < 8) {
-      setMessage({ type: "error", text: "Password must be at least 8 characters long" })
-      return
+        setMessage({ type: "error", text: "Password must be at least 8 characters long" })
+        return
     }
 
     setIsLoading(true)
 
     try {
-      if (formData.role === "customer") {
-        const newCustomer = await createCustomer({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          phone: formData.phone,
-          address: formData.address,
-        })
-        loginCustomer({
-          id: newCustomer.id,
-          email: newCustomer.email,
-          name: newCustomer.name,
-          loginTime: new Date().toISOString(),
-        })
-        setMessage({ type: "success", text: "Customer account created successfully!" })
-        router.push("/customer/dashboard")
-      } else if (formData.role === "driver") {
-        const newDriver = await createDriver({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          phone: formData.phone,
-          vehicleType: formData.vehicleType as "bike" | "auto" | "car" | "van" | "truck",
-          vehicleNumber: formData.vehicleNumber,
-          licenseNumber: formData.licenseNumber,
-        })
-        loginDriver({
-          id: newDriver.id,
-          email: newDriver.email,
-          name: newDriver.name,
-          vehicleType: newDriver.vehicleType,
-          loginTime: new Date().toISOString(),
-        })
-        setMessage({ type: "success", text: "Driver account created successfully!" })
-        router.push("/driver/dashboard")
-      } else {
-        setMessage({ type: "error", text: "Please select a role." })
-      }
+        let newCustomer;
+        if (formData.role === "customer") {
+            newCustomer = await createCustomer({
+                name: formData.name,
+                email: formData.email,
+                password: formData.password,
+                phone: formData.phone,
+                address: formData.address,
+            });
+
+            // Check if newCustomer is valid
+            if (!newCustomer) {
+                throw new Error("Failed to create customer account.");
+            }
+
+            loginCustomer({
+                id: newCustomer.id,
+                email: newCustomer.email,
+                name: newCustomer.name,
+                loginTime: new Date().toISOString(),
+            });
+            setMessage({ type: "success", text: "Customer account created successfully!" });
+            router.push("/customer/dashboard");
+        } else if (formData.role === "driver") {
+            const newDriver = await createDriver({
+                name: formData.name,
+                email: formData.email,
+                password: formData.password,
+                phone: formData.phone,
+                vehicleType: formData.vehicleType as "bike" | "auto" | "car" | "van" | "truck",
+                vehicleNumber: formData.vehicleNumber,
+                licenseNumber: formData.licenseNumber,
+            });
+
+            if (!newDriver) {
+                throw new Error("Failed to create driver account.");
+            }
+
+            loginDriver({
+                id: newDriver.id,
+                email: newDriver.email,
+                name: newDriver.name,
+                vehicleType: newDriver.vehicleType,
+                loginTime: new Date().toISOString(),
+            });
+            setMessage({ type: "success", text: "Driver account created successfully!" });
+            router.push("/driver/dashboard");
+        } else {
+            setMessage({ type: "error", text: "Please select a role." });
+        }
     } catch (error) {
-      console.error("Signup error:", error)
-      setMessage({ type: "error", text: "Failed to create account. Please try again." })
+        console.error("Signup error:", error);
+        setMessage({ type: "error", text: error.message || "Failed to create account. Please try again." });
     } finally {
-      setIsLoading(false)
+        setIsLoading(false);
     }
-  }
+};
 
   const getRoleIcon = () => {
     switch (formData.role) {
@@ -136,6 +148,7 @@ export default function SignupPage() {
         return "text-gray-600"
     }
   }
+  const roleIcon = getRoleIcon()
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
@@ -155,7 +168,7 @@ export default function SignupPage() {
               "Choose your role and create your account"
             )
           }
-          icon={getRoleIcon()}
+          icon={roleIcon ?? undefined}
           iconColorClass={getRoleColor()}
         >
           <form onSubmit={handleSignup} className="space-y-4">
