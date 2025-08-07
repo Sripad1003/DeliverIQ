@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+import { Suspense } from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -10,13 +10,13 @@ import { Input } from "../../components/ui/input"
 import { Label } from "../../components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select"
 import { Textarea } from "../../components/ui/textarea"
-import { Truck, User, Car, Shield } from "lucide-react"
-import { StatusAlert } from "../../components/ui/status-alert" // Import StatusAlert
-import { PageHeaderWithBack } from "../../components/layout/page-header-with-back" // Import PageHeaderWithBack
-import { AuthCard } from "../../components/auth/auth-card" // Import AuthCard
+import { Truck, User, Car, Shield } from 'lucide-react'
+import { StatusAlert } from "../../components/ui/status-alert"
+import { PageHeaderWithBack } from "../../components/layout/page-header-with-back"
+import { AuthCard } from "../../components/auth/auth-card"
 import { initializeAppData, createCustomer, createDriver, loginCustomer, loginDriver } from "../../lib/app-data"
 
-export default function SignupPage() {
+function SignupContent() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -34,7 +34,7 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [message, setMessage] = useState({ type: "", text: "" }) // Add message state
+  const [message, setMessage] = useState({ type: "", text: "" })
 
   useEffect(() => {
     initializeAppData()
@@ -42,7 +42,7 @@ export default function SignupPage() {
     if (roleParam) {
       setFormData((prev) => ({ ...prev, role: roleParam }))
     }
-  }, [searchParams.get("role")])
+  }, [searchParams])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -50,7 +50,7 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
-    setMessage({ type: "", text: "" }) // Clear previous messages
+    setMessage({ type: "", text: "" })
 
     if (formData.password !== formData.confirmPassword) {
       setMessage({ type: "error", text: "Passwords don't match" })
@@ -75,7 +75,6 @@ export default function SignupPage() {
           address: formData.address,
         });
 
-        // Check if newCustomer is valid
         if (!newCustomer) {
           throw new Error("Failed to create customer account.");
         }
@@ -314,5 +313,24 @@ export default function SignupPage() {
         </AuthCard>
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading signup form...</p>
+      </div>
+    </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <SignupContent />
+    </Suspense>
   )
 }

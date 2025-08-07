@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../..
 import { Input } from "../../../components/ui/input"
 import { Label } from "../../../components/ui/label"
 import { Badge } from "../../../components/ui/badge"
-import {  Dialog,  DialogContent,  DialogDescription,  DialogHeader,  DialogTitle,  DialogTrigger,} from "../../../components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, } from "../../../components/ui/dialog"
 import { Shield, UserPlus, Trash2 } from "lucide-react"
 import { StatusAlert } from "../../../components/ui/status-alert" // Import StatusAlert
 import { DashboardHeader } from "../../../components/layout/dashboard-header" // Import DashboardHeader
@@ -118,8 +118,7 @@ export default function ManageAdminsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardHeader title="Admin Management" onLogout={handleLogout} homeLink="/admin/dashboard" />
-
+      <DashboardHeader title="Admin Management" onLogout={handleLogout} showBackToDashboard={true} />
       <main className="container mx-auto px-4 py-8">
         <StatusAlert
           message={{
@@ -128,9 +127,7 @@ export default function ManageAdminsPage() {
           }}
           className="mb-6 border-red-200 bg-red-50 text-red-800"
         />
-
         <StatusAlert message={message} />
-
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
@@ -138,72 +135,72 @@ export default function ManageAdminsPage() {
                 <CardTitle>Administrator Accounts</CardTitle>
                 <CardDescription>Manage admin access to the DeliverIQ platform</CardDescription>
               </div>
+              <Button className="bg-red-600 hover:bg-red-700" onClick={() => setIsCreateDialogOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Create Admin
+              </Button>
               <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="bg-red-600 hover:bg-red-700">
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Create Admin
-                  </Button>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Create New Admin Account</DialogTitle>
+                      <DialogDescription>Create a new administrator account with full platform access.</DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleCreateAdmin} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Full Name</Label>
+                        <Input
+                          id="name"
+                          placeholder="Enter full name"
+                          value={newAdmin.name}
+                          onChange={(e) => setNewAdmin((prev) => ({ ...prev, name: e.target.value }))}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="Enter email address"
+                          value={newAdmin.email}
+                          onChange={(e) => setNewAdmin((prev) => ({ ...prev, email: e.target.value }))}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="password">Password</Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          placeholder="Create secure password (min 8 chars)"
+                          value={newAdmin.password}
+                          onChange={(e) => setNewAdmin((prev) => ({ ...prev, password: e.target.value }))}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirmPassword">Confirm Password</Label>
+                        <Input
+                          id="confirmPassword"
+                          type="password"
+                          placeholder="Confirm password"
+                          value={newAdmin.confirmPassword}
+                          onChange={(e) => setNewAdmin((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                          required
+                        />
+                      </div>
+                      <div className="flex justify-end space-x-2 pt-4">
+                        <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={isLoading} className="bg-red-600 hover:bg-red-700">
+                          {isLoading ? "Creating..." : "Create Admin"}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
                 </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create New Admin Account</DialogTitle>
-                    <DialogDescription>Create a new administrator account with full platform access.</DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleCreateAdmin} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
-                      <Input
-                        id="name"
-                        placeholder="Enter full name"
-                        value={newAdmin.name}
-                        onChange={(e) => setNewAdmin((prev) => ({ ...prev, name: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="Enter email address"
-                        value={newAdmin.email}
-                        onChange={(e) => setNewAdmin((prev) => ({ ...prev, email: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="Create secure password (min 8 chars)"
-                        value={newAdmin.password}
-                        onChange={(e) => setNewAdmin((prev) => ({ ...prev, password: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm Password</Label>
-                      <Input
-                        id="confirmPassword"
-                        type="password"
-                        placeholder="Confirm password"
-                        value={newAdmin.confirmPassword}
-                        onChange={(e) => setNewAdmin((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div className="flex justify-end space-x-2 pt-4">
-                      <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={isLoading} className="bg-red-600 hover:bg-red-700">
-                        {isLoading ? "Creating..." : "Create Admin"}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
               </Dialog>
             </div>
           </CardHeader>
@@ -223,8 +220,8 @@ export default function ManageAdminsPage() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <Badge
-                      variant={admin.status === "active" ? "default" : "secondary"}
-                      className={admin.status === "active" ? "bg-green-600" : "bg-gray-500"}
+                      variant={admin.status === "active" ? "default" : "outline"}
+                      className={admin.status === "active" ? "bg-green-600" : "bg-yellow-600"}
                     >
                       {admin.status}
                     </Badge>
@@ -239,7 +236,7 @@ export default function ManageAdminsPage() {
                       </>
                     )}
                     {admin.id === "1" && (
-                      <Badge variant="outline" className="text-blue-600 border-blue-600">
+                      <Badge variant="outline" className="text-red-600 border-black">
                         Super Admin
                       </Badge>
                     )}

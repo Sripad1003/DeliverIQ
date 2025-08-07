@@ -41,7 +41,7 @@ export default function DriverVerification() {
       driver.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       driver.vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchesFilter = filterStatus === "all" || 
+    const matchesFilter = filterStatus === "all" ||
       (filterStatus === "pending" && !driver.documentsVerified) ||
       (filterStatus === "verified" && driver.documentsVerified && driver.isVerified) ||
       (filterStatus === "rejected" && !driver.isVerified && driver.status === "suspended")
@@ -79,7 +79,7 @@ export default function DriverVerification() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardHeader title="Driver Verification" onLogout={handleLogout} />
+      <DashboardHeader title="Driver Verification" onLogout={handleLogout} showBackToDashboard={true} />
 
       <main className="container mx-auto px-4 py-8">
         <div className="grid md:grid-cols-4 gap-4 mb-6">
@@ -132,7 +132,7 @@ export default function DriverVerification() {
         <div className="mb-6">
           <div className="flex items-center gap-4 mb-4">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 placeholder="Search drivers..."
                 value={searchTerm}

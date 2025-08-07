@@ -61,7 +61,7 @@ export default function OrderManagement() {
   const filteredOrders = orders.filter(order => {
     const customerName = getCustomerName(order.customerId)
     const driverName = getDriverName(order.driverId)
-    
+
     const matchesSearch = order.id.includes(searchTerm) ||
       customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       driverName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -130,8 +130,7 @@ export default function OrderManagement() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardHeader title="Order Management" onLogout={handleLogout} />
-
+      <DashboardHeader title="Order Management" onLogout={handleLogout} showBackToDashboard={true} />
       <main className="container mx-auto px-4 py-8">
         <div className="grid md:grid-cols-5 gap-4 mb-6">
           <Card>
@@ -194,7 +193,7 @@ export default function OrderManagement() {
         <div className="mb-6">
           <div className="flex items-center gap-4 mb-4">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 placeholder="Search orders..."
                 value={searchTerm}
@@ -302,8 +301,8 @@ export default function OrderManagement() {
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         variant="outline"
                         onClick={() => {
                           setSelectedOrder(order)
@@ -345,7 +344,7 @@ export default function OrderManagement() {
                   rows={4}
                 />
                 <div className="flex gap-2 mt-4">
-                  <Button 
+                  <Button
                     onClick={() => {
                       // Here you would update the order with the admin note
                       console.log("Saving admin note:", adminNote)
@@ -355,8 +354,8 @@ export default function OrderManagement() {
                   >
                     Save Note
                   </Button>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => {
                       setSelectedOrder(null)
                       setAdminNote("")

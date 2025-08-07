@@ -1,9 +1,10 @@
 "use client"
 
+import { Suspense } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
 import { Button } from "../../../components/ui/button"
 import { Badge } from "../../../components/ui/badge"
-import { Users, Truck, Package, TrendingUp, AlertCircle, CheckCircle, Shield, Key, Database } from 'lucide-react'
+import { Users, Truck, Package, TrendingUp, AlertCircle, CheckCircle, Shield, Key, Database, Bell, X, ExternalLink } from 'lucide-react'
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -22,7 +23,19 @@ const areArraysOfObjectsEqual = (arr1: any[], arr2: any[]) => {
   return true
 }
 
-export default function AdminDashboard() {
+interface AdminTask {
+  id: string
+  type: 'verification' | 'payment' | 'support' | 'system'
+  title: string
+  description: string
+  priority: 'high' | 'medium' | 'low'
+  actionUrl?: string
+  actionLabel?: string
+  dismissible: boolean
+  count?: number
+}
+
+function AdminDashboardContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [showAccessDenied, setShowAccessDenied] = useState(false)
@@ -37,6 +50,9 @@ export default function AdminDashboard() {
     { name: string; role: string; location?: string; vehicleType?: string; status?: string }[]
   >([])
 
+  // Interactive tasks state
+  const [adminTasks, setAdminTasks] = useState<AdminTask[]>([])
+
   useEffect(() => {
     if (searchParams.get("accessDenied") === "true") {
       setShowAccessDenied(true)
@@ -50,10 +66,10 @@ export default function AdminDashboard() {
     const fetchData = async () => {
       try {
         setLoading(true)
-        
+
         const [customers, drivers, orders] = await Promise.all([
           getCustomers(),
-          getDrivers(), 
+          getDrivers(),
           getOrders()
         ])
 
@@ -111,6 +127,77 @@ export default function AdminDashboard() {
         if (!areArraysOfObjectsEqual(recentRegistrations, sortedRecentRegistrations)) {
           setRecentRegistrations(sortedRecentRegistrations as any)
         }
+
+        // Generate interactive admin tasks based on real data
+        const tasks: AdminTask[] = []
+
+        // Driver verification tasks
+        const unverifiedDrivers = drivers.filter(d => !d.documentsVerified || !d.isVerified)
+        if (unverifiedDrivers.length > 0) {
+          tasks.push({
+            id: 'driver-verification',
+            type: 'verification',
+            title: 'Driver Verification Required',
+            description: `${unverifiedDrivers.length} drivers need verification`,
+            priority: 'high',
+            actionUrl: '/admin/driver-verification',
+            actionLabel: 'Review Drivers',
+            dismissible: false,
+            count: unverifiedDrivers.length
+          })
+        }
+
+        // Payment issues
+        const failedPayments = orders.filter(o => o.paymentStatus === 'failed')
+        if (failedPayments.length > 0) {
+          tasks.push({
+            id: 'payment-issues',
+            type: 'payment',
+            title: 'Payment Issues',
+            description: `${failedPayments.length} orders have payment failures`,
+            priority: 'high',
+            actionUrl: '/admin/order-management',
+            actionLabel: 'View Orders',
+            dismissible: true,
+            count: failedPayments.length
+          })
+        }
+
+        // Pending orders without drivers
+        const pendingOrders = orders.filter(o => o.status === OrderStatus.pending && !o.driverId)
+        if (pendingOrders.length > 0) {
+          tasks.push({
+            id: 'pending-orders',
+            type: 'support',
+            title: 'Orders Need Attention',
+            description: `${pendingOrders.length} orders are pending driver assignment`,
+            priority: 'medium',
+            actionUrl: '/admin/order-management',
+            actionLabel: 'Manage Orders',
+            dismissible: true,
+            count: pendingOrders.length
+          })
+        }
+
+        // New user registrations today
+        const todayRegistrations = allUsers.filter(u =>
+          new Date(u.createdAt).toDateString() === new Date().toDateString()
+        )
+        if (todayRegistrations.length > 0) {
+          tasks.push({
+            id: 'new-registrations',
+            type: 'system',
+            title: 'New User Registrations',
+            description: `${todayRegistrations.length} new users registered today`,
+            priority: 'low',
+            actionUrl: '/admin/manage-users',
+            actionLabel: 'View Users',
+            dismissible: true,
+            count: todayRegistrations.length
+          })
+        }
+        setAdminTasks(tasks)
+
       } catch (error) {
         console.error("Error fetching dashboard data:", error)
       } finally {
@@ -120,6 +207,35 @@ export default function AdminDashboard() {
 
     fetchData()
   }, [searchParams, router])
+
+  const handleDismissTask = (taskId: string) => {
+    setAdminTasks(prev => prev.filter(task => task.id !== taskId))
+  }
+
+  const handleTaskAction = (task: AdminTask) => {
+    if (task.actionUrl) {
+      router.push(task.actionUrl)
+    }
+  }
+
+  const getPriorityColor = (priority: AdminTask['priority']) => {
+    switch (priority) {
+      case 'high': return 'text-red-500'
+      case 'medium': return 'text-yellow-500'
+      case 'low': return 'text-green-500'
+      default: return 'text-gray-500'
+    }
+  }
+
+  const getPriorityIcon = (type: AdminTask['type']) => {
+    switch (type) {
+      case 'verification': return Shield
+      case 'payment': return AlertCircle
+      case 'support': return Bell
+      case 'system': return CheckCircle
+      default: return AlertCircle
+    }
+  }
 
   const handleLogout = () => {
     localStorage.removeItem("adminSession")
@@ -232,34 +348,74 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
+          {/* Interactive Admin Tasks */}
           <Card>
             <CardHeader>
-              <CardTitle>System Alerts</CardTitle>
-              <CardDescription>Issues requiring attention</CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-blue-600" />
+                Admin Tasks
+                {adminTasks.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">
+                    {adminTasks.length}
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription>Items requiring your attention</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <AlertCircle className="h-5 w-5 text-red-500" />
-                  <div>
-                    <p className="font-semibold">Payment Failed</p>
-                    <p className="text-sm text-gray-600">Order #1234 payment issue</p>
+              <div className="space-y-3">
+                {adminTasks.length > 0 ? (
+                  adminTasks.map((task) => {
+                    const Icon = getPriorityIcon(task.type)
+                    return (
+                      <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center gap-3 flex-1">
+                          <Icon className={`h-5 w-5 ${getPriorityColor(task.priority)}`} />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-sm">{task.title}</p>
+                              {task.count && (
+                                <Badge variant="outline" className="text-xs">
+                                  {task.count}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-600">{task.description}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {task.actionUrl && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleTaskAction(task)}
+                              className="text-xs"
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              {task.actionLabel}
+                            </Button>
+                          )}
+                          {task.dismissible && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDismissTask(task.id)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })
+                ) : (
+                  <div className="text-center py-4">
+                    <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600">All tasks completed!</p>
+                    <p className="text-xs text-gray-500">No items require immediate attention</p>
                   </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <AlertCircle className="h-5 w-5 text-yellow-500" />
-                  <div>
-                    <p className="font-semibold">Driver Verification</p>
-                    <p className="text-sm text-gray-600">3 drivers pending verification</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <div>
-                    <p className="font-semibold">System Update</p>
-                    <p className="text-sm text-gray-600">Successfully deployed v2.1</p>
-                  </div>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -271,7 +427,7 @@ export default function AdminDashboard() {
             <CardDescription>Quick actions and controls</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-4">
               <Link href="/admin/manage-users">
                 <Button className="h-20 flex flex-col w-full">
                   <Users className="h-6 w-6 mb-2" />
@@ -305,15 +461,6 @@ export default function AdminDashboard() {
                   Security Setup
                 </Button>
               </Link>
-              <Link href="/admin/data-transparency">
-                <Button
-                  variant="outline"
-                  className="h-20 flex flex-col bg-transparent w-full border-blue-200 hover:bg-blue-50"
-                >
-                  <Database className="h-6 w-6 mb-2 text-blue-600" />
-                  Data Transparency
-                </Button>
-              </Link>
             </div>
           </CardContent>
         </Card>
@@ -322,5 +469,24 @@ export default function AdminDashboard() {
         </p>
       </main>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading dashboard...</p>
+      </div>
+    </div>
+  )
+}
+
+export default function AdminDashboard() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <AdminDashboardContent />
+    </Suspense>
   )
 }
