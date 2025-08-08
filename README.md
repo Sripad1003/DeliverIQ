@@ -84,3 +84,4 @@ Upon first load, the application will seed the database with the following demo 
 ## Deployment
 
 This project can be easily deployed to Vercel. Ensure your `MONGODB_URI` environment variable is set in your Vercel project settings.
+https://deliveriq.vercel.app/ live deployment
