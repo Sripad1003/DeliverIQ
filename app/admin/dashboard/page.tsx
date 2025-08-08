@@ -4,7 +4,7 @@ import { Suspense } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
 import { Button } from "../../../components/ui/button"
 import { Badge } from "../../../components/ui/badge"
-import { Users, Truck, Package, TrendingUp, AlertCircle, CheckCircle, Shield, Key, Database, Bell, X, ExternalLink } from 'lucide-react'
+import { Users, Truck, Package, TrendingUp, AlertCircle, CheckCircle, Shield, Key, Database, Bell, X, ExternalLink, Home } from 'lucide-react'
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"

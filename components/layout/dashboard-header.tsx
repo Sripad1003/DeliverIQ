@@ -1,8 +1,9 @@
 "use client"
 
 import { Button } from "../ui/button"
-import { LogOut, ArrowLeft, LayoutDashboard } from 'lucide-react'
+import { LogOut, ArrowLeft, LayoutDashboard ,Home} from 'lucide-react'
 import Link from "next/link"
+import { PageHeaderWithBack } from "./page-header-with-back"
 
 interface DashboardHeaderProps {
   title: string
@@ -16,14 +17,17 @@ export function DashboardHeader({ title, onLogout, showBackToDashboard = false }
       <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
+            <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-750">
+              <Home/>
+              Home
+            </Link>
             {showBackToDashboard && (
               <Link 
                 href="/admin/dashboard"
-                className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors"
+                className="flex items-center space-x-2 text-blue-600 hover:text-blue-750 transition-colors"
               >
-                <ArrowLeft className="h-4 w-4" />
                 <LayoutDashboard className="h-4 w-4" />
-                <span className="text-sm font-medium">Back to Dashboard</span>
+                <span className="text-sm font-medium">Dashboard</span>
               </Link>
             )}
             <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
